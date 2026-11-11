@@ -22,5 +22,8 @@ coverage/
 !.env.example
 .junctura/
 
+# junctura-health checkout used only by CI tests (never committed)
+.junctura-health/
+
 # Release output
 release/
