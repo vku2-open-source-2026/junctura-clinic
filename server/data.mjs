@@ -427,6 +427,8 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
       const record = get(patientId);
       return record ? summarize(record, clock()) : null;
     },
+    /** The patient a Junctura subject identifies, or null (people created at this station have no subject). */
+    patientIdBySubject: subject => row(q("SELECT patient_id FROM patients WHERE subject = ?").get(subject))?.patient_id ?? null,
     allergyConflicts,
     log,
     createPatient, setAllergies, addCondition, addMedication, stopMedication, addEncounter, addVaccination, addReferral,
