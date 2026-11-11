@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { createServer as createSecureServer } from "node:https";
+import { createJuncturaClient } from "@junctura/server-client";
 import { createApp } from "./app.mjs";
+import { PROVIDED, createCapabilityHandler } from "./capabilities.mjs";
 import { loadConfig } from "./config.mjs";
 import { loadClinicData } from "./data.mjs";
 import { createVerifier } from "./jwt.mjs";
@@ -26,4 +30,16 @@ const server = createServer(createApp({ config, data, verifier }));
 server.listen(config.port, config.host, () => {
   console.log(`Junctura Clinic (${data.facility}) listening on http://${config.host}:${server.address().port}`);
 });
-for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => server.close(() => process.exit(0)));
+
+// Provider side: Junctura calls these over HTTPS with a one-use ticket (see capabilities.mjs).
+let provider;
+if (config.junctura && config.provider) {
+  const handler = createCapabilityHandler({ data, junctura: createJuncturaClient(config.junctura) });
+  provider = createSecureServer({ cert: readFileSync(config.provider.certFile), key: readFileSync(config.provider.keyFile) }, handler);
+  provider.listen(config.provider.port, config.provider.host, () => {
+    console.log(`Providing ${PROVIDED.map(item => item.slug).join(", ")} on https://${config.provider.host}:${provider.address().port}`);
+  });
+} else {
+  console.log("Capabilities are not offered: set JUNCTURA_URL, JUNCTURA_APP_CLIENT_ID/SECRET and PROVIDER_TLS_CERT/KEY to let other apps call Clinic.");
+}
+for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => { provider?.close(); server.close(() => process.exit(0)); });

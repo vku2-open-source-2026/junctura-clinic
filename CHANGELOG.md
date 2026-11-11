@@ -20,6 +20,15 @@ All notable changes to Junctura Clinic are recorded here. The format follows
 
 ### Added
 
+- **Clinic provides its four capabilities through Junctura**: `pre-visit-summary`, `allergy-list`,
+  `vaccination-history` and `referral-summary` (`POST /capabilities/<slug>`, HTTPS). Each call redeems the
+  one-use ticket (`@junctura/server-client`), checks purpose and emergency rules and the person named by the
+  ticket, and answers exactly `{ output }` shaped by `@junctura/health-contracts` 1.1.0. Empty allergy lists are
+  reported as `not-recorded` unless staff confirmed "no known allergies" (`none-known`). Every call is written
+  to the audit log with its purpose, never with medical content. Enabled by `PROVIDER_TLS_CERT`/`PROVIDER_TLS_KEY`
+  plus the demo credentials; without them the app runs as before.
+- First runtime dependencies: `@junctura/server-client` and `@junctura/health-contracts`, locked in
+  `package-lock.json` (`npm ci`).
 - **Clinic is now a working station** (Issue #5): data is saved in SQLite (`node:sqlite`, no new dependency;
   `CLINIC_DB`), seeded once; reception queue (new patient with duplicate warning, daily ticket numbers, call,
   cancel); exam records (vitals, diagnosis, prescriptions, advice) with an allergy-conflict guard that needs a

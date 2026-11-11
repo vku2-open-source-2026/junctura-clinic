@@ -56,7 +56,7 @@ Clinic không gọi thẳng ứng dụng khác và không đọc database của 
 
 | Thành phần | Công nghệ |
 | --- | --- |
-| Máy chủ | Node.js 24, không framework; API trong `server/` |
+| Máy chủ | Node.js 24, không framework; API trong `server/`; dùng [`@junctura/server-client`](https://www.npmjs.com/package/@junctura/server-client) và [`@junctura/health-contracts`](https://www.npmjs.com/package/@junctura/health-contracts) |
 | Lưu trữ | SQLite qua `node:sqlite` (có sẵn trong Node, không thêm thư viện), file `data/clinic.db` |
 | Đăng nhập | Junctura (OpenID Connect, PKCE); phiên ký RS256 |
 | Giao diện | React 19, Vite, `@junctura/health-ui` |
@@ -81,6 +81,7 @@ scripts/  kiểm tra cú pháp và REUSE
 ```sh
 git clone https://github.com/vku2-open-source-2026/junctura-clinic.git
 cd junctura-clinic
+npm ci                # cài thư viện máy chủ từ lockfile
 npm run web:install   # cài thư viện giao diện từ lockfile
 npm run build         # build giao diện vào web/dist
 ```
@@ -103,6 +104,8 @@ Máy chủ đọc kết nối từ `.junctura/demo/junctura-clinic.env` do `demo
 | --- | --- | --- |
 | `JUNCTURA_HEALTH_DIR` | Vị trí repo junctura-health | `../junctura-health` |
 | `CLINIC_DB` | File SQLite; xóa file để nạp lại dữ liệu mẫu | `data/clinic.db` |
+| `PROVIDER_TLS_CERT`, `PROVIDER_TLS_KEY` | Chứng chỉ và khóa (tạo bằng `npm run provider:pki -- clinic` trong junctura-dxos) để Junctura gọi Clinic qua HTTPS; thiếu thì không cung cấp năng lực | không có |
+| `PROVIDER_PORT`, `PROVIDER_BIND` | Cổng và địa chỉ lắng nghe của phần cung cấp năng lực | `8443`, `127.0.0.1` |
 
 ## Kiểm thử
 
@@ -117,7 +120,7 @@ Cả bốn lệnh chạy tự động trong [CI](.github/workflows/ci.yml) cho m
 
 ## Hiện trạng
 
-Ứng dụng trạm y tế (đăng nhập, tiếp đón, khám, tiêm chủng, chuyển tuyến, nhật ký) đã chạy được. **Chưa có:** cung cấp bốn năng lực qua Junctura và tab nhật ký truy cập từ Junctura. Tiến độ ở [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues) và [CHANGELOG](CHANGELOG.md).
+Ứng dụng trạm y tế (đăng nhập, tiếp đón, khám, tiêm chủng, chuyển tuyến, nhật ký) đã chạy được. Clinic đã **cung cấp bốn năng lực qua Junctura** (mã nguồn: `server/capabilities.mjs`). **Chưa có:** tab nhật ký truy cập từ Junctura và chạy trong Docker cùng cả hệ thống. Tiến độ ở [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues) và [CHANGELOG](CHANGELOG.md).
 
 Bản demo soạn tóm tắt theo quy tắc cố định, không dùng AI. Lịch nhắc tiêm theo bộ lịch mẫu của demo, không phải hướng dẫn chuyên môn.
 

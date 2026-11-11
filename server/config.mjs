@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { parseEnv } from "./env.mjs";
 
 const DEFAULT_PORT = 5181;
+const DEFAULT_PROVIDER_PORT = 8443;
 
 /**
  * Configuration comes from the environment. For the local demo, the credentials file
@@ -25,7 +26,18 @@ export function loadConfig({ env = process.env, cwd = process.cwd() } = {}) {
   }
   const port = Number(get("PORT") ?? get("WEB_PORT") ?? DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new RangeError("PORT must be a valid port number");
+  const baseUrl = get("JUNCTURA_URL");
+  const clientId = get("JUNCTURA_APP_CLIENT_ID");
+  const clientSecret = get("JUNCTURA_APP_CLIENT_SECRET");
+  const certFile = get("PROVIDER_TLS_CERT");
+  const keyFile = get("PROVIDER_TLS_KEY");
+  const providerPort = Number(get("PROVIDER_PORT") ?? DEFAULT_PROVIDER_PORT);
+  if (!Number.isInteger(providerPort) || providerPort < 0 || providerPort > 65535) throw new RangeError("PROVIDER_PORT must be a valid port number");
+  if (Boolean(certFile) !== Boolean(keyFile)) throw new Error("PROVIDER_TLS_CERT and PROVIDER_TLS_KEY must be set together.");
   return Object.freeze({
+    /** What Clinic needs to answer Junctura's capability calls; null when any part is missing (the app still runs without it). */
+    junctura: baseUrl && clientId && clientSecret ? Object.freeze({ baseUrl, clientId, clientSecret }) : null,
+    provider: certFile ? Object.freeze({ port: providerPort, host: get("PROVIDER_BIND") ?? "127.0.0.1", certFile: resolve(cwd, certFile), keyFile: resolve(cwd, keyFile) }) : null,
     issuer: issuer.replace(/\/+$/, ""),
     webClientId,
     port,
