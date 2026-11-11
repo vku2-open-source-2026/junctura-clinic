@@ -20,6 +20,14 @@ All notable changes to Junctura Clinic are recorded here. The format follows
 
 ### Added
 
+- **Clinic is now a working station** (Issue #5): data is saved in SQLite (`node:sqlite`, no new dependency;
+  `CLINIC_DB`), seeded once; reception queue (new patient with duplicate warning, daily ticket numbers, call,
+  cancel); exam records (vitals, diagnosis, prescriptions, advice) with an allergy-conflict guard that needs a
+  reason to override; allergy, chronic condition and medication editing ("not recorded" is never shown as
+  "none"); vaccination recording with automatic dose number; referral creation with a printable slip; an audit
+  log (who, when, what, which record) and its page; settings (AI summary off by default, rule-based
+  summary, no model); role permissions (reception cannot write exams); Vietnamese validation errors; server
+  and UI tests.
 - **Clinic web rebuilt on `@junctura/health-ui`**: landing page, app shell with quick patient
   search (`/` or Ctrl+K), a **Today** screen (counts, things to act on, recent visits and
   referrals), a filterable patient list (allergy, elderly, young children), a patient record

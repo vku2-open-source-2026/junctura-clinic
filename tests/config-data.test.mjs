@@ -38,7 +38,7 @@ test("fold ignores case and Vietnamese diacritics", () => {
 
 test("clinic data separates staff from patients and hides subjects", () => {
   const data = buildClinicData(fixture);
-  assert.deepEqual([...data.staff.keys()], ["ysi.tramyte"]);
+  assert.deepEqual([...data.staff.keys()], ["ysi.tramyte", "letan.tram", "khach.tram"]);
   assert.equal(data.list().length, 2);
   assert.equal(data.get("P0001").referrals[0].referralId, "CT-1");
   assert.equal(data.get("nope"), null);

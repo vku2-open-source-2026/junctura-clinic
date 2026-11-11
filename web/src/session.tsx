@@ -3,9 +3,13 @@
 import { createContext, useContext, useEffect, useState, type DependencyList, type ReactNode } from "react";
 import { ApiError } from "./api";
 import type { OidcSettings } from "./auth";
+import type { Me, Permission, StationSettings } from "./types";
 import { EmptyState, ErrorState, Skeleton } from "@junctura/health-ui";
 
-export interface SessionValue { settings: OidcSettings; facility: string; expire: () => void; setCrumbs: (crumbs: string[]) => void }
+export interface SessionValue {
+  settings: OidcSettings; facility: string; expire: () => void; setCrumbs: (crumbs: string[]) => void;
+  me: Me; can: (permission: Permission) => boolean; station: StationSettings; setStation: (value: StationSettings) => void;
+}
 
 const SessionContext = createContext<SessionValue | null>(null);
 export const SessionProvider = SessionContext.Provider;

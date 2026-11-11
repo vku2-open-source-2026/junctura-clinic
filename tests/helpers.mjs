@@ -50,17 +50,20 @@ export const fixture = {
     users: [
       { subject: "u-1", username: "ysi.tramyte", displayName: "Y sĩ Lê Thị Hoa", role: "clinic-staff", app: "junctura-clinic" },
       { subject: "u-2", username: "bacsi.benhvien", displayName: "BS. Phạm Minh Quang", role: "physician", app: "junctura-hospital" },
+      { subject: "u-3", username: "letan.tram", displayName: "Lễ tân Nguyễn Thu", role: "clinic-reception", app: "junctura-clinic" },
+      { subject: "u-4", username: "khach.tram", displayName: "Tài khoản vai trò lạ", role: "clinic-guest", app: "junctura-clinic" },
     ],
   },
 };
 
 /** Starts the real app on an ephemeral port with a fake identity provider key set. */
-export async function startApp({ staticDir = "/nonexistent" } = {}) {
+export async function startApp({ staticDir = "/nonexistent", file = ":memory:" } = {}) {
   const signer = makeSigner();
   const config = { issuer: ISSUER, webClientId: CLIENT, staticDir };
   const verifier = createVerifier({ issuer: ISSUER, clientId: CLIENT, getJson: async () => ({ keys: [signer.jwk] }) });
-  const server = createServer(createApp({ config, data: buildClinicData({ ...fixture, today: TODAY }), verifier }));
+  const data = buildClinicData({ ...fixture, today: TODAY, file });
+  const server = createServer(createApp({ config, data, verifier }));
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
-  return { signer, base, close: () => new Promise(resolve => server.close(resolve)) };
+  return { signer, base, data, close: () => new Promise(resolve => server.close(resolve).on("close", () => data.close())) };
 }

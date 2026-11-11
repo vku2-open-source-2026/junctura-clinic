@@ -31,6 +31,7 @@ export function loadConfig({ env = process.env, cwd = process.cwd() } = {}) {
     port,
     host: get("HOST") ?? "127.0.0.1",
     healthDir,
+    dbFile: resolve(cwd, get("CLINIC_DB") ?? "data/clinic.db"),
     staticDir: resolve(cwd, get("CLINIC_STATIC_DIR") ?? "web/dist"),
   });
 }
