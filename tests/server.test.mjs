@@ -28,7 +28,7 @@ test("health and public config need no sign-in", async () => {
 test("patient data requires a valid token", async () => {
   const app = await startApp();
   try {
-    for (const path of ["/api/me", "/api/patients", "/api/patients/P0001"]) {
+    for (const path of ["/api/me", "/api/patients", "/api/patients/P0001", "/api/overview", "/api/vaccinations", "/api/referrals"]) {
       const anonymous = await get(app.base, path);
       assert.equal(anonymous.status, 401, path);
       assert.equal(anonymous.headers.get("www-authenticate"), "Bearer");
@@ -74,6 +74,38 @@ test("clinic staff list, search and open patient records", async () => {
     assert.equal((await get(app.base, "/api/patients/P0002", token)).body.referrals.length, 0);
     assert.equal((await get(app.base, "/api/patients/P9999", token)).status, 404);
     assert.equal((await get(app.base, "/api/unknown", token)).status, 404);
+  } finally { await app.close(); }
+});
+
+test("clinic staff get the overview, due vaccinations and referrals", async () => {
+  const app = await startApp();
+  const token = app.signer.sign();
+  try {
+    const overview = (await get(app.base, "/api/overview", token)).body;
+    assert.equal(overview.today, "2026-11-01");
+    assert.deepEqual(overview.counts, { patients: 2, severeAllergy: 1, vaccinesOverdue: 1, vaccinesSoon: 1, encounters30d: 2, referrals30d: 1 });
+    assert.deepEqual(overview.severeAllergy.map(p => p.patientId), ["P0001"]);
+    assert.deepEqual(overview.recentEncounters.map(e => e.patientId), ["P0002", "P0001", "P0001"]);
+    assert.equal(overview.recentReferrals[0].patientName, "Nguyễn Văn An");
+
+    const vaccinations = (await get(app.base, "/api/vaccinations", token)).body;
+    assert.deepEqual(vaccinations.due.map(item => [item.patientId, item.code, item.state, item.nextDose]), [["P0002", "141", "overdue", 2], ["P0002", "43", "soon", 2]]);
+
+    const referrals = (await get(app.base, "/api/referrals", token)).body.referrals;
+    assert.deepEqual(referrals.map(item => [item.referralId, item.patientId]), [["CT-1", "P0001"]]);
+    assert.equal("subject" in referrals[0], false);
+  } finally { await app.close(); }
+});
+
+test("an empty allergy list is reported as not recorded, never as no allergy", async () => {
+  const app = await startApp();
+  const token = app.signer.sign();
+  try {
+    const list = (await get(app.base, "/api/patients", token)).body.patients;
+    assert.deepEqual(list.map(p => [p.patientId, p.allergyState]), [["P0001", "recorded"], ["P0002", "not-recorded"]]);
+    assert.equal((await get(app.base, "/api/patients/P0002", token)).body.allergyState, "not-recorded");
+    assert.equal((await get(app.base, "/api/patients/P0001", token)).body.allergyState, "recorded");
+    assert.deepEqual((await get(app.base, "/api/patients/P0002", token)).body.vaccinesDue.map(item => [item.code, item.state]), [["141", "overdue"], ["43", "soon"]]);
   } finally { await app.close(); }
 });
 

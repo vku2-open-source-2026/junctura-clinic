@@ -9,7 +9,26 @@ All notable changes to Junctura Clinic are recorded here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- **Web UI aligned with the Junctura Console** (`@junctura/health-ui` 0.3.0): floating side bar, top bar with
+  breadcrumbs (the open patient's name is the last level) and a demo-data pill, stat cards with icons and hints
+  on the Today screen, `rounded-lg` everywhere.
+- Public page: a full landing page (benefits, how it works, who it is for, trust, questions, call to action).
+  "Đăng nhập" goes straight to the Junctura sign-in page (no extra step); a Console-style notice page appears
+  only when a sign-in fails or a session expires. Credentials are still entered only on the Junctura page.
+
 ### Added
+
+- **Clinic web rebuilt on `@junctura/health-ui`**: landing page, app shell with quick patient
+  search (`/` or Ctrl+K), a **Today** screen (counts, things to act on, recent visits and
+  referrals), a filterable patient list (allergy, elderly, young children), a patient record
+  with tabs (overview, medications, vaccinations, referrals, history) and the allergy banner
+  always on top, plus Vaccinations and Referrals lists. Light and dark themes, text size,
+  phone layout.
+- **Read APIs** `GET /api/overview`, `/api/vaccinations`, `/api/referrals`. Vaccinations due
+  follow a small demo schedule (not clinical guidance).
+- **Allergy rule**: an empty allergy list is shown as "not recorded", never as "no allergies".
 
 - **Clinic server and web UI**: Junctura sign-in (OpenID Connect with PKCE, RS256 token
   verification against the issuer's keys, clinic staff only), patient list with

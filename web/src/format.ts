@@ -13,3 +13,16 @@ export const sexLabel = (sex: string) => (sex === "male" ? "Nam" : sex === "fema
 export const severityLabel = (severity: Severity) => ({ mild: "Nhẹ", moderate: "Vừa", severe: "Nặng" })[severity] ?? severity;
 
 export const urgencyLabel = (urgency: string) => ({ routine: "Thường", urgent: "Khẩn", emergency: "Cấp cứu" })[urgency] ?? urgency;
+
+/** Folds case and diacritics so "nguyen" finds "Nguyễn" (same rule as the server). */
+export const fold = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase();
+
+export const ageOf = (birthYear: number, now: Date = new Date()) => Math.max(0, now.getFullYear() - birthYear);
+
+/** "Thứ Tư, 11/11/2026" from "2026-11-11". */
+export function formatLongDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return value;
+  const day = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3])).getUTCDay();
+  return `${["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][day]}, ${match[3]}/${match[2]}/${match[1]}`;
+}

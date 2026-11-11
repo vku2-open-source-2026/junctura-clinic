@@ -2,20 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 import { useEffect, useState, type AnchorHTMLAttributes } from "react";
 
-// A tiny history-API router: two routes do not justify a routing library.
-export const usePath = () => {
-  const [path, setPath] = useState(location.pathname);
+// A tiny history-API router: a handful of routes do not justify a routing library.
+const read = () => ({ path: location.pathname, search: location.search });
+
+export const useLocation = () => {
+  const [value, setValue] = useState(read);
   useEffect(() => {
-    const update = () => setPath(location.pathname);
+    const update = () => setValue(read());
     addEventListener("popstate", update);
     return () => removeEventListener("popstate", update);
   }, []);
-  return path;
+  return value;
 };
 
 export function navigate(to: string) {
   history.pushState(null, "", to);
   dispatchEvent(new PopStateEvent("popstate"));
+  scrollTo({ top: 0 });
 }
 
 export function Link({ to, onClick, ...rest }: { to: string } & AnchorHTMLAttributes<HTMLAnchorElement>) {
