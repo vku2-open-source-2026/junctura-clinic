@@ -23,6 +23,8 @@ export function makeSigner(kid = "k1") {
   return { jwk, sign, privateKey };
 }
 
+export const TODAY = "2026-11-01";
+
 export const fixture = {
   clinic: {
     facility: "Trạm Y tế thử nghiệm",
@@ -34,7 +36,12 @@ export const fixture = {
       },
       {
         subject: "s-2", patientId: "P0002", patientName: "Trần Thị Bình", birthYear: 1975, sex: "female", ward: "Hòa Khánh Bắc",
-        allergies: [], chronicConditions: [], currentMedications: [], encounters: [], vaccinations: [],
+        allergies: [], chronicConditions: [], currentMedications: [], encounters: [{ date: "2026-10-30", reason: "Ho", diagnosis: { code: "J06.9", name: "Viêm đường hô hấp trên" } }],
+        vaccinations: [
+          { vaccine: "Vắc xin cúm mùa", code: "141", date: "2025-09-01", doseNumber: 1 },
+          { vaccine: "Vắc xin viêm gan B", code: "43", date: "2026-10-10", doseNumber: 1 },
+          { vaccine: "Vắc xin COVID-19", code: "213", date: "2026-10-20", doseNumber: 1 },
+        ],
       },
     ],
     referrals: [{ referralId: "CT-1", subject: "s-1", issuedAt: "2026-10-28T08:00:00.000Z", toFacility: "Bệnh viện Đà Nẵng", urgency: "urgent", reason: "Đau ngực", fromFacility: "Trạm Y tế thử nghiệm" }],
@@ -52,7 +59,7 @@ export async function startApp({ staticDir = "/nonexistent" } = {}) {
   const signer = makeSigner();
   const config = { issuer: ISSUER, webClientId: CLIENT, staticDir };
   const verifier = createVerifier({ issuer: ISSUER, clientId: CLIENT, getJson: async () => ({ keys: [signer.jwk] }) });
-  const server = createServer(createApp({ config, data: buildClinicData(fixture), verifier }));
+  const server = createServer(createApp({ config, data: buildClinicData({ ...fixture, today: TODAY }), verifier }));
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   return { signer, base, close: () => new Promise(resolve => server.close(resolve)) };

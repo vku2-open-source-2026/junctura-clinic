@@ -8,6 +8,7 @@ import test from "node:test";
 import { loadConfig } from "../server/config.mjs";
 import { buildClinicData, fold, loadClinicData } from "../server/data.mjs";
 import { parseEnv } from "../server/env.mjs";
+import { dosesDue } from "../server/vaccines.mjs";
 import { fixture } from "./helpers.mjs";
 
 test("parseEnv reads KEY=VALUE lines and ignores comments", () => {
@@ -41,6 +42,17 @@ test("clinic data separates staff from patients and hides subjects", () => {
   assert.equal(data.list().length, 2);
   assert.equal(data.get("P0001").referrals[0].referralId, "CT-1");
   assert.equal(data.get("nope"), null);
+});
+
+test("dosesDue lists the next dose of a series and the yearly repeat, and nothing else", () => {
+  const today = "2026-11-01";
+  const dose = (code, date, doseNumber) => ({ vaccine: "x", code, date, doseNumber });
+  assert.deepEqual(dosesDue([dose("141", "2025-09-01", 1)], today).map(d => [d.state, d.nextDose, d.due]), [["overdue", 2, "2026-09-01"]]);
+  assert.deepEqual(dosesDue([dose("141", "2025-11-20", 1)], today).map(d => [d.state, d.due]), [["soon", "2026-11-20"]]);
+  assert.deepEqual(dosesDue([dose("141", "2026-10-01", 1)], today), [], "a recent flu shot is not due");
+  assert.deepEqual(dosesDue([dose("43", "2026-01-01", 3)], today), [], "a finished series is not due");
+  assert.deepEqual(dosesDue([dose("43", "2026-01-01", 1), dose("43", "2026-02-01", 2)], today).map(d => d.nextDose), [3], "uses the latest dose");
+  assert.deepEqual(dosesDue([dose("999", "2020-01-01", 1)], today), [], "unknown vaccines are ignored");
 });
 
 const healthDir = resolve(process.env.JUNCTURA_HEALTH_DIR ?? "../junctura-health");

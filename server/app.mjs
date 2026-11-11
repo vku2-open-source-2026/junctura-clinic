@@ -56,6 +56,9 @@ export function createApp({ config, data, verifier }) {
 
     if (url.pathname === "/api/me") return send(res, 200, user);
     if (url.pathname === "/api/patients") return send(res, 200, { patients: data.list(url.searchParams.get("q") ?? "") });
+    if (url.pathname === "/api/overview") return send(res, 200, data.overview());
+    if (url.pathname === "/api/vaccinations") return send(res, 200, { today: data.today, due: data.vaccinesDue() });
+    if (url.pathname === "/api/referrals") return send(res, 200, { referrals: data.referrals() });
     const detail = /^\/api\/patients\/([A-Za-z0-9-]{1,32})$/.exec(url.pathname);
     if (detail) {
       const patient = data.get(detail[1]);

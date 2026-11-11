@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
 import { freshAccessToken, type OidcSettings } from "./auth";
-import type { Me, PatientRecord, PatientSummary, PublicConfig } from "./types";
+import type { DueItem, Me, Overview, PatientRecord, PatientSummary, PublicConfig, ReferralRow } from "./types";
 
 export class ApiError extends Error {
   constructor(readonly status: number, message: string) {
@@ -27,3 +27,6 @@ export const listPatients = (settings: OidcSettings, query: string, signal?: Abo
   request<{ patients: PatientSummary[] }>(`/api/patients?q=${encodeURIComponent(query)}`, settings, signal).then(body => body.patients);
 export const getPatient = (settings: OidcSettings, patientId: string, signal?: AbortSignal) =>
   request<PatientRecord>(`/api/patients/${encodeURIComponent(patientId)}`, settings, signal);
+export const getOverview = (settings: OidcSettings, signal?: AbortSignal) => request<Overview>("/api/overview", settings, signal);
+export const getVaccinations = (settings: OidcSettings, signal?: AbortSignal) => request<{ today: string; due: DueItem[] }>("/api/vaccinations", settings, signal);
+export const getReferrals = (settings: OidcSettings, signal?: AbortSignal) => request<{ referrals: ReferralRow[] }>("/api/referrals", settings, signal).then(body => body.referrals);

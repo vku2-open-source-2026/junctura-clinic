@@ -27,7 +27,10 @@ Clinic không gọi thẳng ứng dụng khác và không đọc database của 
 ## Hiện có
 
 - **Đăng nhập bằng Junctura** (OpenID Connect, PKCE): chỉ nhân viên trạm y tế (tài khoản của ứng dụng này) xem được hồ sơ; người khác nhận 403.
-- **Danh sách và hồ sơ người bệnh**: tìm theo tên (không cần gõ dấu) hoặc mã; hồ sơ gồm dị ứng (cảnh báo nặng), bệnh mạn tính, thuốc đang dùng, lượt khám, tiêm chủng, chuyển tuyến.
+- **Giao diện dựng trên [`@junctura/health-ui`](https://www.npmjs.com/package/@junctura/health-ui)**: trang giới thiệu, khung ứng dụng có tìm nhanh (phím `/` hoặc Ctrl+K), sáng/tối, cỡ chữ, dùng được trên điện thoại.
+- **Hôm nay**: số liệu, việc cần xử lý (dị ứng nặng, mũi tiêm quá hạn, phiếu chuyển tuyến), khám gần đây.
+- **Bệnh nhân và hồ sơ**: lọc theo nhóm (có dị ứng, cao tuổi, trẻ nhỏ), tìm không cần gõ dấu; hồ sơ có thanh dị ứng luôn ở đầu, các tab tổng quan, thuốc, tiêm chủng, chuyển tuyến, lịch sử. Danh sách dị ứng rỗng hiện là "chưa ghi nhận dị ứng", không bao giờ là "không dị ứng".
+- **Tiêm chủng** và **Chuyển tuyến**: danh sách toàn trạm. Lịch nhắc tiêm theo bộ lịch mẫu của bản demo, không phải hướng dẫn chuyên môn.
 - Dữ liệu là **dữ liệu giả lập** của [junctura-health](https://github.com/vku2-open-source-2026/junctura-health), đọc trực tiếp từ thư mục đó (không chép vào repo); ngày tháng được dời để ngày demo là hôm nay.
 
 Chưa có: ghi tiêm chủng, tạo phiếu chuyển tuyến và cung cấp năng lực qua Junctura (xem [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues)).

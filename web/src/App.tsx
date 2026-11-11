@@ -1,27 +1,43 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
+import { AlertBanner, AppShell, ErrorState, LandingPage, PermissionState, Skeleton, Button, type NavGroup } from "@junctura/health-ui";
+import { CalendarDays, FileOutput, Syringe, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, getConfig, getMe } from "./api";
+import { ApiError, getConfig, getMe, listPatients } from "./api";
 import { buildLogoutUrl, clearSession, completeLogin, loadSession, startLogin } from "./auth";
-import { PatientList } from "./PatientList";
-import { PatientPage } from "./PatientPage";
-import { Link, usePath } from "./router";
+import { tabFromPath } from "./domain";
+import { ageOf, sexLabel } from "./format";
+import { Referrals, Vaccinations } from "./Lists";
+import { Patients } from "./Patients";
+import { PatientRecordPage } from "./Record";
+import { navigate, useLocation } from "./router";
+import { NotFound, SessionProvider } from "./session";
+import { Today } from "./Today";
 import type { Me, PublicConfig } from "./types";
-import { Notice } from "./ui";
 
 type State =
   | { kind: "loading" }
   | { kind: "signed-out"; message?: string }
-  | { kind: "forbidden"; user?: string }
+  | { kind: "forbidden" }
   | { kind: "ready"; me: Me }
   | { kind: "error" };
+
+const NAV: NavGroup[] = [
+  { label: "Hôm nay", items: [{ id: "/", label: "Hôm nay", icon: <CalendarDays aria-hidden className="size-4" /> }] },
+  { label: "Người bệnh", items: [
+    { id: "/patients", label: "Bệnh nhân", icon: <Users aria-hidden className="size-4" /> },
+    { id: "/vaccinations", label: "Tiêm chủng", icon: <Syringe aria-hidden className="size-4" /> },
+    { id: "/referrals", label: "Chuyển tuyến", icon: <FileOutput aria-hidden className="size-4" /> },
+  ] },
+];
+
+const currentNav = (path: string) => (path === "/" ? "/" : NAV.flatMap(group => group.items).find(item => item.id !== "/" && path.startsWith(item.id))?.id ?? "");
 
 export function App() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [state, setState] = useState<State>({ kind: "loading" });
-  const path = usePath();
+  const { path, search } = useLocation();
   const settings = useMemo(() => (config ? { issuer: config.issuer, clientId: config.clientId } : null), [config]);
-
   const expire = useCallback(() => { clearSession(); setState({ kind: "signed-out", message: "Phiên đăng nhập đã hết hạn." }); }, []);
 
   useEffect(() => {
@@ -61,49 +77,47 @@ export function App() {
     location.assign(buildLogoutUrl(settings, `${location.origin}/`, idToken));
   };
 
-  const patientId = /^\/patients\/([^/]+)$/.exec(path)?.[1];
+  if (state.kind === "loading") return <div className="mx-auto max-w-3xl p-8"><Skeleton lines={4} /></div>;
+  if (state.kind === "error") return <div className="mx-auto max-w-xl p-8"><ErrorState onRetry={() => location.reload()}>Không kết nối được máy chủ Clinic hoặc Junctura. Thử lại sau.</ErrorState></div>;
+  if (state.kind === "forbidden") {
+    return <div className="mx-auto max-w-xl space-y-4 p-8"><PermissionState>Tài khoản này không thuộc nhân viên trạm y tế nên không xem được hồ sơ.</PermissionState><Button variant="secondary" onClick={signOut}>Đăng xuất</Button></div>;
+  }
+  if (state.kind === "signed-out") {
+    return (
+      <LandingPage product="Clinic" headline="Hồ sơ người bệnh của trạm y tế, gọn trong một màn hình"
+        lead="Tìm người bệnh, xem dị ứng và thuốc đang dùng, nhắc mũi tiêm, lập phiếu chuyển tuyến. Đăng nhập bằng tài khoản Junctura của bạn."
+        values={[
+          { title: "Dị ứng luôn hiện trước", text: "Dị ứng nằm trên đầu mọi hồ sơ; chưa ghi nhận không bao giờ bị hiểu là không dị ứng." },
+          { title: "Việc cần làm hôm nay", text: "Mũi tiêm quá hạn, dị ứng nặng và phiếu chuyển tuyến gần đây ở ngay màn hình đầu." },
+          { title: "Dùng được trên máy yếu", text: "Chữ lớn, tương phản cao, thao tác bằng bàn phím." },
+        ]}
+        note={config?.facility} onSignIn={() => settings && startLogin(settings)}
+        footer={state.message ? <AlertBanner level="warning" title={state.message} /> : undefined} />
+    );
+  }
+
+  const me = state.me;
+  const tabsPath = /^\/patients\/([^/]+)(?:\/([^/]+))?\/?$/.exec(path);
+  let page;
+  if (path === "/") page = <Today />;
+  else if (path === "/patients") page = <Patients search={search} />;
+  else if (tabsPath) page = <PatientRecordPage patientId={decodeURIComponent(tabsPath[1])} tab={tabFromPath(tabsPath[2])} />;
+  else if (path === "/vaccinations") page = <Vaccinations />;
+  else if (path === "/referrals") page = <Referrals />;
+  else page = <NotFound />;
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/" className="flex items-center gap-3">
-            <span aria-hidden className="grid h-9 w-9 place-items-center rounded-lg bg-brand-600 text-lg font-bold text-white">+</span>
-            <span>
-              <span className="block text-sm font-semibold leading-tight">Junctura Clinic</span>
-              <span className="block text-xs leading-tight text-slate-500">{config?.facility ?? ""}</span>
-            </span>
-          </Link>
-          {state.kind === "ready" && (
-            <div className="flex items-center gap-3 text-sm">
-              <span className="hidden text-slate-600 sm:inline">{state.me.displayName}</span>
-              <button onClick={signOut} className="rounded-lg border border-slate-300 px-3 py-1.5 hover:bg-slate-50">Đăng xuất</button>
-            </div>
-          )}
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        {state.kind === "loading" && <Notice tone="info">Đang tải…</Notice>}
-        {state.kind === "error" && <Notice tone="error">Không kết nối được máy chủ Clinic hoặc Junctura. Thử lại sau.</Notice>}
-        {state.kind === "forbidden" && (
-          <div className="space-y-4">
-            <Notice tone="error">Tài khoản này không thuộc nhân viên trạm y tế nên không xem được hồ sơ.</Notice>
-            <button onClick={signOut} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">Đăng xuất</button>
-          </div>
-        )}
-        {state.kind === "signed-out" && settings && (
-          <div className="mx-auto max-w-md space-y-4 rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-            <h1 className="text-xl font-semibold">Đăng nhập nhân viên trạm y tế</h1>
-            <p className="text-sm text-slate-500">Dùng tài khoản Junctura của bạn để xem hồ sơ người bệnh.</p>
-            {state.message && <Notice tone="error">{state.message}</Notice>}
-            <button onClick={() => startLogin(settings)} className="w-full rounded-lg bg-brand-600 px-4 py-2.5 font-medium text-white hover:bg-brand-700">Đăng nhập với Junctura</button>
-          </div>
-        )}
-        {state.kind === "ready" && settings && (patientId
-          ? <PatientPage settings={settings} patientId={decodeURIComponent(patientId)} onExpired={expire} />
-          : <PatientList settings={settings} onExpired={expire} />)}
-      </main>
-    </div>
+    <SessionProvider value={{ settings: settings!, facility: config!.facility, expire }}>
+      <AppShell product="Clinic" nav={NAV} current={currentNav(path)} onNavigate={navigate}
+        unit={{ name: "Junctura Clinic", stations: [{ id: "main", name: config!.facility }] }}
+        user={{ name: me.displayName, role: me.role }} onSignOut={signOut}
+        search={{ placeholder: "Tìm theo họ tên hoặc mã hồ sơ", onSearch: async query => {
+          if (query.trim().length < 2) return [];
+          const rows = await listPatients(settings!, query);
+          return rows.slice(0, 8).map(row => ({ id: row.patientId, title: row.patientName, subtitle: `${row.patientId} · ${ageOf(row.birthYear)} tuổi · ${sexLabel(row.sex)}` }));
+        }, onSelect: result => navigate(`/patients/${encodeURIComponent(result.id)}`) }}>
+        {page}
+      </AppShell>
+    </SessionProvider>
   );
 }
