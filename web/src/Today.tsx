@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
 import { ActionList, Button, PageHeader, Section, StatStrip, WorkspaceLayout, type ActionItem } from "@junctura/health-ui";
+import { AlertTriangle, CalendarClock, ClipboardList, Users } from "lucide-react";
 import { getOverview } from "./api";
 import { formatLongDate } from "./format";
 import { EventList, PatientLink, UrgencyBadge } from "./parts";
@@ -32,11 +33,18 @@ export function Today() {
         actions={<Button variant="secondary" onClick={() => navigate("/patients")}>Mở danh sách bệnh nhân</Button>} />
       <Remote state={state} reload={reload}>
         {overview => (
+          <div className="space-y-6">
+            <StatStrip items={[
+              { label: "Người bệnh", value: overview.counts.patients, icon: <Users aria-hidden className="size-4" />, hint: "Hồ sơ tại trạm" },
+              { label: "Lượt khám 30 ngày", value: overview.counts.encounters30d, icon: <ClipboardList aria-hidden className="size-4" />, hint: "Tính đến hôm nay" },
+              { label: "Dị ứng nặng", value: overview.counts.severeAllergy, icon: <AlertTriangle aria-hidden className="size-4" />, hint: "Cần chú ý khi kê thuốc, tiêm", tone: overview.counts.severeAllergy > 0 ? "danger" : "neutral" },
+              { label: "Mũi tiêm quá hạn", value: overview.counts.vaccinesOverdue, icon: <CalendarClock aria-hidden className="size-4" />, hint: `${overview.counts.vaccinesSoon} mũi sắp đến hạn`, tone: overview.counts.vaccinesOverdue > 0 ? "warn" : "neutral" },
+            ]} />
           <WorkspaceLayout asideLabel="Chuyển tuyến gần đây"
             aside={<>
               <Section title="Chuyển tuyến gần đây">
                 {overview.recentReferrals.length === 0 ? <p className="text-sm text-muted">Chưa có phiếu chuyển tuyến.</p> : (
-                  <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+                  <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
                     {overview.recentReferrals.map(referral => (
                       <li key={referral.referralId} className="space-y-0.5 px-4 py-2.5">
                         <p className="flex flex-wrap items-center gap-2"><PatientLink id={referral.patientId} name={referral.patientName} /><UrgencyBadge urgency={referral.urgency} /></p>
@@ -48,16 +56,10 @@ export function Today() {
                 )}
               </Section>
             </>}>
-            <StatStrip items={[
-              { label: "Người bệnh", value: overview.counts.patients },
-              { label: "Lượt khám 30 ngày", value: overview.counts.encounters30d },
-              { label: "Dị ứng nặng", value: overview.counts.severeAllergy, tone: overview.counts.severeAllergy > 0 ? "danger" : "neutral" },
-              { label: "Mũi tiêm quá hạn", value: overview.counts.vaccinesOverdue, tone: overview.counts.vaccinesOverdue > 0 ? "warn" : "neutral" },
-            ]} />
-            <Section title="Cần xử lý" count={actionsOf(overview).length}>
+            <Section title="Cần xử lý" description="Việc nên làm trước trong ca trực này." count={actionsOf(overview).length}>
               <ActionList label="Việc cần xử lý" items={actionsOf(overview)} empty="Không có việc tồn đọng." />
             </Section>
-            <Section title="Khám gần đây">
+            <Section title="Khám gần đây" description="Các lượt khám mới ghi nhận tại trạm.">
               {overview.recentEncounters.length === 0 ? <p className="text-sm text-muted">Chưa có lượt khám.</p> : (
                 <EventList label="Lượt khám gần đây" events={overview.recentEncounters.map((item, index) => ({
                   id: `${item.patientId}-${index}`, date: item.date, title: <PatientLink id={item.patientId} name={item.patientName} />, detail: [item.reason, item.diagnosis?.name].filter(Boolean).join(" · "),
@@ -65,6 +67,7 @@ export function Today() {
               )}
             </Section>
           </WorkspaceLayout>
+          </div>
         )}
       </Remote>
     </div>

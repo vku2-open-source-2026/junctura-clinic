@@ -9,6 +9,15 @@ All notable changes to Junctura Clinic are recorded here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- **Web UI aligned with the Junctura Console** (`@junctura/health-ui` 0.3.0): floating side bar, top bar with
+  breadcrumbs (the open patient's name is the last level) and a demo-data pill, stat cards with icons and hints
+  on the Today screen, `rounded-lg` everywhere.
+- Public page: a full landing page (benefits, how it works, who it is for, trust, questions, call to action).
+  "Đăng nhập" goes straight to the Junctura sign-in page (no extra step); a Console-style notice page appears
+  only when a sign-in fails or a session expires. Credentials are still entered only on the Junctura page.
+
 ### Added
 
 - **Clinic web rebuilt on `@junctura/health-ui`**: landing page, app shell with quick patient

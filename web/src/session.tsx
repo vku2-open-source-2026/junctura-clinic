@@ -5,7 +5,7 @@ import { ApiError } from "./api";
 import type { OidcSettings } from "./auth";
 import { EmptyState, ErrorState, Skeleton } from "@junctura/health-ui";
 
-export interface SessionValue { settings: OidcSettings; facility: string; expire: () => void }
+export interface SessionValue { settings: OidcSettings; facility: string; expire: () => void; setCrumbs: (crumbs: string[]) => void }
 
 const SessionContext = createContext<SessionValue | null>(null);
 export const SessionProvider = SessionContext.Provider;

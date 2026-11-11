@@ -1,12 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
-import { AlertBanner, AppShell, ErrorState, LandingPage, PermissionState, Skeleton, Button, type NavGroup } from "@junctura/health-ui";
+import { AppShell, Badge, Button, ErrorState, PermissionState, SignInPage, Skeleton, type NavGroup } from "@junctura/health-ui";
 import { CalendarDays, FileOutput, Syringe, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, getConfig, getMe, listPatients } from "./api";
 import { buildLogoutUrl, clearSession, completeLogin, loadSession, startLogin } from "./auth";
 import { tabFromPath } from "./domain";
 import { ageOf, sexLabel } from "./format";
+import { Landing } from "./Landing";
 import { Referrals, Vaccinations } from "./Lists";
 import { Patients } from "./Patients";
 import { PatientRecordPage } from "./Record";
@@ -37,6 +38,7 @@ export function App() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [state, setState] = useState<State>({ kind: "loading" });
   const { path, search } = useLocation();
+  const [crumbs, setCrumbs] = useState<string[]>([]);
   const settings = useMemo(() => (config ? { issuer: config.issuer, clientId: config.clientId } : null), [config]);
   const expire = useCallback(() => { clearSession(); setState({ kind: "signed-out", message: "Phiên đăng nhập đã hết hạn." }); }, []);
 
@@ -83,17 +85,12 @@ export function App() {
     return <div className="mx-auto max-w-xl space-y-4 p-8"><PermissionState>Tài khoản này không thuộc nhân viên trạm y tế nên không xem được hồ sơ.</PermissionState><Button variant="secondary" onClick={signOut}>Đăng xuất</Button></div>;
   }
   if (state.kind === "signed-out") {
-    return (
-      <LandingPage product="Clinic" headline="Hồ sơ người bệnh của trạm y tế, gọn trong một màn hình"
-        lead="Tìm người bệnh, xem dị ứng và thuốc đang dùng, nhắc mũi tiêm, lập phiếu chuyển tuyến. Đăng nhập bằng tài khoản Junctura của bạn."
-        values={[
-          { title: "Dị ứng luôn hiện trước", text: "Dị ứng nằm trên đầu mọi hồ sơ; chưa ghi nhận không bao giờ bị hiểu là không dị ứng." },
-          { title: "Việc cần làm hôm nay", text: "Mũi tiêm quá hạn, dị ứng nặng và phiếu chuyển tuyến gần đây ở ngay màn hình đầu." },
-          { title: "Dùng được trên máy yếu", text: "Chữ lớn, tương phản cao, thao tác bằng bàn phím." },
-        ]}
-        note={config?.facility} onSignIn={() => settings && startLogin(settings)}
-        footer={state.message ? <AlertBanner level="warning" title={state.message} /> : undefined} />
-    );
+    const signIn = () => settings && startLogin(settings);
+    if (state.message) {
+      return <SignInPage product="Clinic" subtitle="Đăng nhập bằng tài khoản Junctura của trạm y tế." onSignIn={signIn} onBack={() => navigate("/")} message={state.message}
+        note={config ? `${config.facility}. Mật khẩu chỉ nhập trên trang của Junctura.` : undefined} />;
+    }
+    return <Landing facility={config?.facility} onSignIn={signIn} />;
   }
 
   const me = state.me;
@@ -107,8 +104,9 @@ export function App() {
   else page = <NotFound />;
 
   return (
-    <SessionProvider value={{ settings: settings!, facility: config!.facility, expire }}>
-      <AppShell product="Clinic" nav={NAV} current={currentNav(path)} onNavigate={navigate}
+    <SessionProvider value={{ settings: settings!, facility: config!.facility, expire, setCrumbs }}>
+      <AppShell product="Clinic" nav={NAV} current={currentNav(path)} onNavigate={navigate} breadcrumbs={crumbs}
+        status={<Badge tone="neutral">Bản demo · dữ liệu giả lập</Badge>}
         unit={{ name: "Junctura Clinic", stations: [{ id: "main", name: config!.facility }] }}
         user={{ name: me.displayName, role: me.role }} onSignOut={signOut}
         search={{ placeholder: "Tìm theo họ tên hoặc mã hồ sơ", onSearch: async query => {

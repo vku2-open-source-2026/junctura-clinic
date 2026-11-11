@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { ActionList, AiSummaryPanel, AlertBanner, Badge, Button, PatientBanner, Section, SourceBadge, StaleNotice, TabPanel, Tabs, WorkspaceLayout } from "@junctura/health-ui";
 import { ArrowLeft } from "lucide-react";
+import { useEffect } from "react";
 import { getPatient } from "./api";
 import { allergyView, historyOf, PATIENT_TABS, type PatientTab } from "./domain";
 import { formatDate, severityLabel } from "./format";
@@ -21,7 +22,7 @@ function Summary({ record }: { record: PatientRecord }) {
     <div className="space-y-6">
       <Section title="Bệnh mạn tính" count={record.chronicConditions.length}>
         {record.chronicConditions.length === 0 ? <Empty>Chưa ghi nhận bệnh mạn tính.</Empty> : (
-          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
             {record.chronicConditions.map(item => <li key={item.code} className="flex flex-wrap justify-between gap-2 px-4 py-2.5"><span className="font-medium text-ink">{item.name}</span><span className="text-sm text-muted">Từ {formatDate(item.since)}</span></li>)}
           </ul>
         )}
@@ -36,8 +37,14 @@ function Summary({ record }: { record: PatientRecord }) {
 }
 
 export function PatientRecordPage({ patientId, tab }: { patientId: string; tab: PatientTab }) {
-  const { settings } = useSession();
+  const { settings, setCrumbs } = useSession();
   const { state, reload } = useRemote(signal => getPatient(settings, patientId, signal), [settings, patientId]);
+  const name = state.status === "ready" ? state.data.patientName : null;
+  useEffect(() => {
+    if (!name) return;
+    setCrumbs([name]);
+    return () => setCrumbs([]);
+  }, [name, setCrumbs]);
   const open = (next: string) => navigate(`/patients/${encodeURIComponent(patientId)}/${next}`);
   return (
     <Remote state={state} reload={reload}>
@@ -66,7 +73,7 @@ export function PatientRecordPage({ patientId, tab }: { patientId: string; tab: 
               <TabPanel tabsId={ID_BASE} id="summary" hidden={tab !== "summary"}><Summary record={record} /></TabPanel>
               <TabPanel tabsId={ID_BASE} id="medications" hidden={tab !== "medications"}>
                 {record.currentMedications.length === 0 ? <Empty>Chưa ghi nhận thuốc đang dùng.</Empty> : (
-                  <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+                  <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
                     {record.currentMedications.map(item => <li key={item.name} className="flex flex-wrap justify-between gap-2 px-4 py-2.5"><span><span className="font-medium text-ink">{item.name}</span> <span className="text-ink-2">{item.dose}</span></span><span className="text-sm text-muted">Từ {formatDate(item.since)}</span></li>)}
                   </ul>
                 )}
@@ -80,7 +87,7 @@ export function PatientRecordPage({ patientId, tab }: { patientId: string; tab: 
                 {record.referrals.length === 0 ? <Empty>Chưa có phiếu chuyển tuyến.</Empty> : (
                   <ul className="space-y-3">
                     {record.referrals.map(item => (
-                      <li key={item.referralId} className="space-y-1 rounded-xl border border-line bg-surface px-4 py-3">
+                      <li key={item.referralId} className="space-y-1 rounded-lg border border-line bg-surface px-4 py-3">
                         <p className="flex flex-wrap items-center gap-2"><span className="font-medium text-ink">{item.toFacility}</span><UrgencyBadge urgency={item.urgency} /><Badge>{formatDate(item.issuedAt)}</Badge></p>
                         <p className="text-sm text-ink-2">{item.reason}</p>
                         {item.treatmentGiven && <p className="text-sm text-muted">Đã xử trí: {item.treatmentGiven}</p>}

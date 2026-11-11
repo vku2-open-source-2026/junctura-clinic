@@ -18,7 +18,7 @@ const summaries: PatientSummary[] = [
 
 vi.mock("./api", async importOriginal => ({ ...(await importOriginal<typeof import("./api")>()), getPatient: vi.fn(), listPatients: vi.fn() }));
 const mocked = { getPatient: vi.mocked(getPatient), listPatients: vi.mocked(listPatients) };
-const session = { settings: { issuer: "https://id.test", clientId: "c" }, facility: "Trạm test", expire: () => {} };
+const session = { settings: { issuer: "https://id.test", clientId: "c" }, facility: "Trạm test", expire: () => {}, setCrumbs: () => {} };
 const wrap = (node: React.ReactNode) => render(<SessionProvider value={session}>{node}</SessionProvider>);
 
 afterEach(() => { vi.clearAllMocks(); });
