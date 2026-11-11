@@ -3,6 +3,7 @@
 import { Badge, Button, DataTable, PageHeader, SegmentedControl, TextField } from "@junctura/health-ui";
 import { useMemo, useState } from "react";
 import { listPatients } from "./api";
+import { NewPatientDialog } from "./Forms";
 import { filterPatients, type PatientFilter } from "./domain";
 import { ageOf, formatDate, sexLabel } from "./format";
 import { PatientLink } from "./parts";
@@ -13,7 +14,8 @@ import type { PatientSummary } from "./types";
 const FILTERS: PatientFilter[] = ["all", "allergy", "elder", "child"];
 
 export function Patients({ search }: { search: string }) {
-  const { settings } = useSession();
+  const { settings, can } = useSession();
+  const [creating, setCreating] = useState(false);
   const initial = new URLSearchParams(search).get("f");
   const [filter, setFilter] = useState<PatientFilter>(FILTERS.includes(initial as PatientFilter) ? (initial as PatientFilter) : "all");
   const [text, setText] = useState("");
@@ -22,7 +24,9 @@ export function Patients({ search }: { search: string }) {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Bệnh nhân" description="Tìm và mở hồ sơ. Bấm tên để vào hồ sơ; phím / để tìm nhanh từ bất kỳ màn hình nào." />
+      <PageHeader title="Bệnh nhân" description="Tìm và mở hồ sơ. Bấm tên để vào hồ sơ; phím / để tìm nhanh từ bất kỳ màn hình nào."
+        actions={can("register") ? <Button onClick={() => setCreating(true)}>Thêm người bệnh</Button> : undefined} />
+      <NewPatientDialog open={creating} onClose={() => setCreating(false)} onCreated={record => navigate(`/patients/${encodeURIComponent(record.patientId)}`)} />
       <Remote state={state} reload={reload}>
         {all => (
           <>
@@ -45,7 +49,7 @@ export function Patients({ search }: { search: string }) {
                 { key: "sex", header: "Giới", render: row => sexLabel(row.sex) },
                 { key: "ward", header: "Phường", sortValue: row => row.ward },
                 { key: "allergy", header: "Dị ứng", render: row => row.allergyState === "recorded"
-                  ? <Badge tone="danger">{row.severeAllergy ? "Dị ứng nặng" : "Có dị ứng"}</Badge> : <Badge tone="warn">Chưa ghi nhận dị ứng</Badge> },
+                  ? <Badge tone="danger">{row.severeAllergy ? "Dị ứng nặng" : "Có dị ứng"}</Badge> : row.allergyState === "none-known" ? <Badge tone="neutral">Chưa biết dị ứng</Badge> : <Badge tone="warn">Chưa ghi nhận dị ứng</Badge> },
                 { key: "lastVisit", header: "Khám gần nhất", sortValue: row => row.lastVisit ?? "", render: row => formatDate(row.lastVisit) },
               ]} />
           </>

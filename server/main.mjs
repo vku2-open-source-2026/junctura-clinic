@@ -14,7 +14,7 @@ try {
   process.exit(1);
 }
 
-const data = await loadClinicData({ healthDir: config.healthDir }).catch(error => {
+const data = await loadClinicData({ healthDir: config.healthDir, file: config.dbFile }).catch(error => {
   console.error(`Cannot load the demo data from ${config.healthDir}: ${error.message}\nClone junctura-health next to this repository or set JUNCTURA_HEALTH_DIR.`);
   process.exit(1);
 });

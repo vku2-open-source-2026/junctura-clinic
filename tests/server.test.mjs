@@ -41,7 +41,7 @@ test("patient data requires a valid token", async () => {
 test("signed-in people who are not clinic staff are refused", async () => {
   const app = await startApp();
   try {
-    for (const username of ["bacsi.benhvien", "someone.unknown"]) {
+    for (const username of ["bacsi.benhvien", "someone.unknown", "khach.tram"]) {
       const response = await get(app.base, "/api/patients", app.signer.sign({ preferred_username: username }));
       assert.equal(response.status, 403, username);
       assert.deepEqual(response.body, { error: "not-clinic-staff" });
@@ -54,7 +54,8 @@ test("clinic staff list, search and open patient records", async () => {
   const token = app.signer.sign();
   try {
     const me = await get(app.base, "/api/me", token);
-    assert.deepEqual(me.body, { username: "ysi.tramyte", displayName: "Y sĩ Lê Thị Hoa", role: "clinic-staff" });
+    assert.deepEqual({ ...me.body, permissions: undefined }, { username: "ysi.tramyte", displayName: "Y sĩ Lê Thị Hoa", role: "clinic-staff", permissions: undefined });
+    assert.ok(me.body.permissions.includes("exam"));
 
     const all = await get(app.base, "/api/patients", token);
     assert.equal(all.body.patients.length, 2);
@@ -83,7 +84,7 @@ test("clinic staff get the overview, due vaccinations and referrals", async () =
   try {
     const overview = (await get(app.base, "/api/overview", token)).body;
     assert.equal(overview.today, "2026-11-01");
-    assert.deepEqual(overview.counts, { patients: 2, severeAllergy: 1, vaccinesOverdue: 1, vaccinesSoon: 1, encounters30d: 2, referrals30d: 1 });
+    assert.deepEqual(overview.counts, { patients: 2, severeAllergy: 1, vaccinesOverdue: 1, vaccinesSoon: 1, encounters30d: 2, referrals30d: 1, waiting: 0, inExam: 0, seenToday: 0 });
     assert.deepEqual(overview.severeAllergy.map(p => p.patientId), ["P0001"]);
     assert.deepEqual(overview.recentEncounters.map(e => e.patientId), ["P0002", "P0001", "P0001"]);
     assert.equal(overview.recentReferrals[0].patientName, "Nguyễn Văn An");
@@ -109,11 +110,12 @@ test("an empty allergy list is reported as not recorded, never as no allergy", a
   } finally { await app.close(); }
 });
 
-test("only reads are allowed and responses carry security headers", async () => {
+test("unsupported methods are refused and responses carry security headers", async () => {
   const app = await startApp();
   try {
-    const post = await get(app.base, "/api/patients", app.signer.sign(), { method: "POST" });
-    assert.equal(post.status, 405);
+    assert.equal((await get(app.base, "/api/patients", app.signer.sign(), { method: "DELETE" })).status, 405);
+    assert.equal((await get(app.base, "/", undefined, { method: "POST" })).status, 405);
+    assert.equal((await get(app.base, "/api/config", undefined, { method: "POST" })).status, 405);
     const response = await get(app.base, "/healthz");
     assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     assert.match(response.headers.get("content-security-policy"), /frame-ancestors 'none'/);

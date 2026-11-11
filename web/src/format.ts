@@ -26,3 +26,19 @@ export function formatLongDate(value: string): string {
   const day = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3])).getUTCDay();
   return `${["Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"][day]}, ${match[3]}/${match[2]}/${match[1]}`;
 }
+
+const ACTIONS: Record<string, string> = {
+  "patient.view": "Xem hồ sơ", "patient.create": "Thêm người bệnh", "allergy.update": "Cập nhật dị ứng", "condition.add": "Thêm bệnh mạn tính",
+  "medication.add": "Thêm thuốc đang dùng", "medication.stop": "Ngừng thuốc", "encounter.create": "Ghi lượt khám", "vaccination.record": "Ghi mũi tiêm",
+  "referral.create": "Lập phiếu chuyển tuyến", "queue.add": "Thêm vào hàng chờ", "queue.call": "Gọi khám", "queue.done": "Khám xong", "queue.cancel": "Hủy lượt chờ",
+  "settings.update": "Đổi cài đặt", "summary.view": "Xem tóm tắt tự động",
+};
+export const actionLabel = (action: string) => ACTIONS[action] ?? action;
+
+/** "2026-11-11T08:05:00.000Z" -> "11/11/2026 15:05" (the browser's time zone). */
+export function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${two(date.getDate())}/${two(date.getMonth() + 1)}/${date.getFullYear()} ${two(date.getHours())}:${two(date.getMinutes())}`;
+}

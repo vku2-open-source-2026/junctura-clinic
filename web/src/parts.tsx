@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
-import { Badge, type Tone } from "@junctura/health-ui";
+import { Badge, type QueueItem, type Tone } from "@junctura/health-ui";
 import type { ReactNode } from "react";
 import type { HistoryEvent } from "./domain";
-import { formatDate, urgencyLabel } from "./format";
+import { ageOf, formatDate, sexLabel, urgencyLabel } from "./format";
 import { Link } from "./router";
+import type { QueueEntry } from "./types";
 
 export const PatientLink = ({ id, name }: { id: string; name: string }) => <Link to={`/patients/${encodeURIComponent(id)}`} className="font-medium text-brand underline-offset-2 hover:underline">{name}</Link>;
 
@@ -30,4 +31,17 @@ export function EventList({ events, label, who }: { events: { id: string; date: 
       ))}
     </ol>
   );
+}
+
+/** A queue row for the library QueueList: urgent, young and old people first get a marker; allergies show as a badge. */
+export function toQueueItem(entry: QueueEntry, extra?: ReactNode): QueueItem {
+  const age = ageOf(entry.birthYear);
+  return {
+    id: String(entry.id), ticket: entry.ticket, name: entry.patientName, meta: `${entry.patientId} · ${age} tuổi · ${sexLabel(entry.sex)}`,
+    priority: entry.priority === "urgent" ? "urgent" : age < 6 ? "child" : age >= 60 ? "elder" : undefined, since: entry.since, note: entry.reason,
+    flags: <>
+      {entry.severeAllergy ? <Badge tone="danger">Dị ứng nặng</Badge> : entry.allergyState === "not-recorded" ? <Badge tone="warn">Chưa ghi nhận dị ứng</Badge> : null}
+      {extra}
+    </>,
+  };
 }

@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
-import { ActionList, Button, PageHeader, Section, StatStrip, WorkspaceLayout, type ActionItem } from "@junctura/health-ui";
-import { AlertTriangle, CalendarClock, ClipboardList, Users } from "lucide-react";
+import { ActionList, Button, PageHeader, QueueList, Section, StatStrip, WorkspaceLayout, type ActionItem } from "@junctura/health-ui";
+import { AlertTriangle, CalendarClock, Clock, ClipboardList, DoorOpen } from "lucide-react";
 import { getOverview } from "./api";
 import { formatLongDate } from "./format";
-import { EventList, PatientLink, UrgencyBadge } from "./parts";
+import { EventList, PatientLink, toQueueItem, UrgencyBadge } from "./parts";
 import { navigate } from "./router";
 import { Remote, useRemote, useSession } from "./session";
 import type { Overview } from "./types";
@@ -30,12 +30,13 @@ export function Today() {
   return (
     <div className="space-y-6">
       <PageHeader title="Hôm nay" meta={state.status === "ready" ? `${formatLongDate(state.data.today)} · ${facility}` : facility}
-        actions={<Button variant="secondary" onClick={() => navigate("/patients")}>Mở danh sách bệnh nhân</Button>} />
+        actions={<Button onClick={() => navigate("/reception")}>Mở hàng chờ khám</Button>} />
       <Remote state={state} reload={reload}>
         {overview => (
           <div className="space-y-6">
             <StatStrip items={[
-              { label: "Người bệnh", value: overview.counts.patients, icon: <Users aria-hidden className="size-4" />, hint: "Hồ sơ tại trạm" },
+              { label: "Đang chờ", value: overview.counts.waiting, icon: <Clock aria-hidden className="size-4" />, hint: `${overview.counts.seenToday} người đã khám hôm nay`, tone: overview.counts.waiting > 5 ? "warn" : "neutral" },
+              { label: "Đang khám", value: overview.counts.inExam, icon: <DoorOpen aria-hidden className="size-4" />, hint: `${overview.counts.patients} hồ sơ tại trạm` },
               { label: "Lượt khám 30 ngày", value: overview.counts.encounters30d, icon: <ClipboardList aria-hidden className="size-4" />, hint: "Tính đến hôm nay" },
               { label: "Dị ứng nặng", value: overview.counts.severeAllergy, icon: <AlertTriangle aria-hidden className="size-4" />, hint: "Cần chú ý khi kê thuốc, tiêm", tone: overview.counts.severeAllergy > 0 ? "danger" : "neutral" },
               { label: "Mũi tiêm quá hạn", value: overview.counts.vaccinesOverdue, icon: <CalendarClock aria-hidden className="size-4" />, hint: `${overview.counts.vaccinesSoon} mũi sắp đến hạn`, tone: overview.counts.vaccinesOverdue > 0 ? "warn" : "neutral" },
@@ -56,6 +57,9 @@ export function Today() {
                 )}
               </Section>
             </>}>
+            <Section title="Hàng chờ hôm nay" description="Người đang chờ và đang khám." count={overview.queue.length}>
+              <QueueList label="Hàng chờ hôm nay" compact items={overview.queue.map(entry => toQueueItem(entry))} onOpen={() => navigate("/reception")} openLabel="Mở hàng chờ" empty={<p className="text-sm text-muted">Chưa có ai trong hàng chờ.</p>} />
+            </Section>
             <Section title="Cần xử lý" description="Việc nên làm trước trong ca trực này." count={actionsOf(overview).length}>
               <ActionList label="Việc cần xử lý" items={actionsOf(overview)} empty="Không có việc tồn đọng." />
             </Section>

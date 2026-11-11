@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
 import { AppShell, Badge, Button, ErrorState, PermissionState, SignInPage, Skeleton, type NavGroup } from "@junctura/health-ui";
-import { CalendarDays, FileOutput, Syringe, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, FileOutput, ScrollText, Settings as Cog, Syringe, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, getConfig, getMe, listPatients } from "./api";
+import { ApiError, getConfig, getMe, getSettings, listPatients } from "./api";
+import { Audit } from "./Audit";
 import { buildLogoutUrl, clearSession, completeLogin, loadSession, startLogin } from "./auth";
 import { tabFromPath } from "./domain";
 import { ageOf, sexLabel } from "./format";
@@ -11,28 +12,38 @@ import { Landing } from "./Landing";
 import { Referrals, Vaccinations } from "./Lists";
 import { Patients } from "./Patients";
 import { PatientRecordPage } from "./Record";
+import { Reception } from "./Reception";
+import { ReferralSlip } from "./ReferralSlip";
+import { Settings } from "./Settings";
 import { navigate, useLocation } from "./router";
 import { NotFound, SessionProvider } from "./session";
 import { Today } from "./Today";
-import type { Me, PublicConfig } from "./types";
+import type { Me, Permission, PublicConfig, StationSettings } from "./types";
 
 type State =
   | { kind: "loading" }
   | { kind: "signed-out"; message?: string }
   | { kind: "forbidden" }
-  | { kind: "ready"; me: Me }
+  | { kind: "ready"; me: Me; station: StationSettings }
   | { kind: "error" };
 
-const NAV: NavGroup[] = [
-  { label: "Hôm nay", items: [{ id: "/", label: "Hôm nay", icon: <CalendarDays aria-hidden className="size-4" /> }] },
+const navFor = (can: (permission: Permission) => boolean): NavGroup[] => [
+  { label: "Hôm nay", items: [
+    { id: "/", label: "Hôm nay", icon: <CalendarDays aria-hidden className="size-4" /> },
+    { id: "/reception", label: "Hàng chờ khám", icon: <ClipboardList aria-hidden className="size-4" /> },
+  ] },
   { label: "Người bệnh", items: [
     { id: "/patients", label: "Bệnh nhân", icon: <Users aria-hidden className="size-4" /> },
     { id: "/vaccinations", label: "Tiêm chủng", icon: <Syringe aria-hidden className="size-4" /> },
     { id: "/referrals", label: "Chuyển tuyến", icon: <FileOutput aria-hidden className="size-4" /> },
   ] },
+  { label: "Quản lý", items: [
+    ...(can("audit.read") ? [{ id: "/audit", label: "Nhật ký thao tác", icon: <ScrollText aria-hidden className="size-4" /> }] : []),
+    { id: "/settings", label: "Cài đặt", icon: <Cog aria-hidden className="size-4" /> },
+  ] },
 ];
 
-const currentNav = (path: string) => (path === "/" ? "/" : NAV.flatMap(group => group.items).find(item => item.id !== "/" && path.startsWith(item.id))?.id ?? "");
+const currentNav = (nav: NavGroup[], path: string) => (path === "/" ? "/" : nav.flatMap(group => group.items).find(item => item.id !== "/" && path.startsWith(item.id))?.id ?? "");
 
 export function App() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
@@ -40,6 +51,7 @@ export function App() {
   const { path, search } = useLocation();
   const [crumbs, setCrumbs] = useState<string[]>([]);
   const settings = useMemo(() => (config ? { issuer: config.issuer, clientId: config.clientId } : null), [config]);
+  const setStation = useCallback((station: StationSettings) => setState(current => (current.kind === "ready" ? { ...current, station } : current)), []);
   const expire = useCallback(() => { clearSession(); setState({ kind: "signed-out", message: "Phiên đăng nhập đã hết hạn." }); }, []);
 
   useEffect(() => {
@@ -61,7 +73,8 @@ export function App() {
           history.replaceState(null, "", "/");
         }
         if (!signedIn) return setState({ kind: "signed-out" });
-        setState({ kind: "ready", me: await getMe(oidc) });
+        const me = await getMe(oidc);
+        setState({ kind: "ready", me, station: await getSettings(oidc) });
       } catch (error) {
         if (cancelled) return;
         if (error instanceof ApiError && error.status === 403) setState({ kind: "forbidden" });
@@ -94,18 +107,25 @@ export function App() {
   }
 
   const me = state.me;
+  const can = (permission: Permission) => me.permissions.includes(permission);
+  const nav = navFor(can);
+  const slip = /^\/phieu-chuyen-tuyen\/([^/]+)\/([^/]+)\/?$/.exec(path);
   const tabsPath = /^\/patients\/([^/]+)(?:\/([^/]+))?\/?$/.exec(path);
   let page;
   if (path === "/") page = <Today />;
   else if (path === "/patients") page = <Patients search={search} />;
-  else if (tabsPath) page = <PatientRecordPage patientId={decodeURIComponent(tabsPath[1])} tab={tabFromPath(tabsPath[2])} />;
+  else if (tabsPath) page = <PatientRecordPage patientId={decodeURIComponent(tabsPath[1])} tab={tabFromPath(tabsPath[2])} search={search} />;
   else if (path === "/vaccinations") page = <Vaccinations />;
   else if (path === "/referrals") page = <Referrals />;
+  else if (path === "/reception") page = <Reception />;
+  else if (path === "/audit") page = <Audit />;
+  else if (path === "/settings") page = <Settings />;
   else page = <NotFound />;
 
   return (
-    <SessionProvider value={{ settings: settings!, facility: config!.facility, expire, setCrumbs }}>
-      <AppShell product="Clinic" nav={NAV} current={currentNav(path)} onNavigate={navigate} breadcrumbs={crumbs}
+    <SessionProvider value={{ settings: settings!, facility: config!.facility, expire, setCrumbs, me, can, station: state.station, setStation }}>
+      {slip ? <ReferralSlip patientId={decodeURIComponent(slip[1])} referralId={decodeURIComponent(slip[2])} /> : (
+      <AppShell product="Clinic" nav={nav} current={currentNav(nav, path)} onNavigate={navigate} breadcrumbs={crumbs}
         status={<Badge tone="neutral">Bản demo · dữ liệu giả lập</Badge>}
         unit={{ name: "Junctura Clinic", stations: [{ id: "main", name: config!.facility }] }}
         user={{ name: me.displayName, role: me.role }} onSignOut={signOut}
@@ -115,7 +135,7 @@ export function App() {
           return rows.slice(0, 8).map(row => ({ id: row.patientId, title: row.patientName, subtitle: `${row.patientId} · ${ageOf(row.birthYear)} tuổi · ${sexLabel(row.sex)}` }));
         }, onSelect: result => navigate(`/patients/${encodeURIComponent(result.id)}`) }}>
         {page}
-      </AppShell>
+      </AppShell>)}
     </SessionProvider>
   );
 }
