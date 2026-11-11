@@ -24,10 +24,18 @@ Clinic là **bên cung cấp** bốn năng lực theo [hợp đồng dùng chung
 
 Clinic không gọi thẳng ứng dụng khác và không đọc database của ứng dụng khác; mọi trao đổi đi qua Junctura.
 
+## Hiện có
+
+- **Đăng nhập bằng Junctura** (OpenID Connect, PKCE): chỉ nhân viên trạm y tế (tài khoản của ứng dụng này) xem được hồ sơ; người khác nhận 403.
+- **Danh sách và hồ sơ người bệnh**: tìm theo tên (không cần gõ dấu) hoặc mã; hồ sơ gồm dị ứng (cảnh báo nặng), bệnh mạn tính, thuốc đang dùng, lượt khám, tiêm chủng, chuyển tuyến.
+- Dữ liệu là **dữ liệu giả lập** của [junctura-health](https://github.com/vku2-open-source-2026/junctura-health), đọc trực tiếp từ thư mục đó (không chép vào repo); ngày tháng được dời để ngày demo là hôm nay.
+
+Chưa có: ghi tiêm chủng, tạo phiếu chuyển tuyến và cung cấp năng lực qua Junctura (xem [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues)).
+
 ## Yêu cầu
 
-- Node.js 24 (xem `.node-version`)
-- Một Junctura DX-OS đang chạy; chuẩn bị môi trường bằng `npm run demo:setup` ở [junctura-health](https://github.com/vku2-open-source-2026/junctura-health)
+- Node.js 24 (xem `.node-version`). Máy chủ chỉ dùng tính năng có từ Node 22.
+- [junctura-dxos](https://github.com/vku2-open-source-2026/junctura-dxos) đang chạy và [junctura-health](https://github.com/vku2-open-source-2026/junctura-health) đã chạy `npm run demo:setup`. Cả hai nằm cạnh thư mục này; nếu ở nơi khác, đặt `JUNCTURA_HEALTH_DIR`.
 
 ## Build từ mã nguồn
 
@@ -35,8 +43,21 @@ Clinic không gọi thẳng ứng dụng khác và không đọc database của 
 git clone https://github.com/vku2-open-source-2026/junctura-clinic.git
 cd junctura-clinic
 npm run check
-npm test
+npm test                # kiểm thử máy chủ
+npm run web:install     # cài thư viện giao diện từ lockfile
+npm run web:test        # kiểm thử giao diện
+npm run build           # build giao diện vào web/dist
 ```
+
+## Chạy
+
+```sh
+npm start
+```
+
+Mở <http://localhost:5181> và đăng nhập bằng `ysi.tramyte`. Mật khẩu demo nằm trong `.junctura/demo/accounts.env` của junctura-health. Máy chủ đọc thông tin kết nối từ `.junctura/demo/junctura-clinic.env` do `demo:setup` tạo (xem [`.env.example`](.env.example)); chạy mà thiếu thì nó báo rõ biến nào cần.
+
+Khi sửa giao diện, chạy hai tiến trình: `npm run dev:server` (API ở cổng 5191) và `npm run dev` (giao diện ở cổng 5181, tự chuyển `/api` sang cổng 5191).
 
 ## Đóng góp
 

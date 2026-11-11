@@ -2,7 +2,7 @@
   "name": "junctura-clinic",
   "version": "0.0.0",
   "private": true,
-  "description": "Junctura Clinic: commune health station app on Junctura DX-OS (patient records, vaccinations, referrals, capability provider).",
+  "description": "Junctura Clinic: commune health station app on Junctura DX-OS (patient records from synthetic data, Junctura sign-in).",
   "license": "Apache-2.0",
   "type": "module",
   "homepage": "https://junctura.studio",
@@ -17,8 +17,14 @@
     "node": ">=24 <25"
   },
   "scripts": {
+    "start": "node server/main.mjs",
+    "dev": "npm --prefix web run dev",
+    "dev:server": "node server/main.mjs --port 5191",
+    "build": "npm --prefix web run build",
+    "web:install": "npm --prefix web ci",
+    "web:test": "npm --prefix web test",
     "check": "node scripts/check.mjs",
     "check:reuse": "node scripts/check-reuse.mjs",
-    "test": "node --test"
+    "test": "node --test \"tests/*.test.mjs\""
   }
 }
