@@ -57,12 +57,12 @@ export const fixture = {
 };
 
 /** Starts the real app on an ephemeral port with a fake identity provider key set. */
-export async function startApp({ staticDir = "/nonexistent", file = ":memory:" } = {}) {
+export async function startApp({ staticDir = "/nonexistent", file = ":memory:", summarizer } = {}) {
   const signer = makeSigner();
   const config = { issuer: ISSUER, webClientId: CLIENT, staticDir };
   const verifier = createVerifier({ issuer: ISSUER, clientId: CLIENT, getJson: async () => ({ keys: [signer.jwk] }) });
   const data = buildClinicData({ ...fixture, today: TODAY, file });
-  const server = createServer(createApp({ config, data, verifier }));
+  const server = createServer(createApp({ config, data, verifier, summarizer }));
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   return { signer, base, data, close: () => new Promise(resolve => server.close(resolve).on("close", () => data.close())) };

@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS queue (
   priority TEXT NOT NULL DEFAULT 'normal', state TEXT NOT NULL DEFAULT 'waiting', created_at TEXT NOT NULL, called_at TEXT, done_at TEXT, by_user TEXT);
 CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, username TEXT NOT NULL, display_name TEXT NOT NULL, action TEXT NOT NULL, patient_id TEXT, detail TEXT);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS stations (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_encounters_patient ON encounters(patient_id);
 CREATE INDEX IF NOT EXISTS idx_queue_day ON queue(day, state);
 CREATE INDEX IF NOT EXISTS idx_audit_patient ON audit(patient_id);
@@ -76,6 +77,10 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
   db.exec("PRAGMA foreign_keys = ON");
   if (file !== ":memory:") db.exec("PRAGMA journal_mode = WAL");
   db.exec(SCHEMA);
+  // Columns added after the first release: a database made by an older version is upgraded in place.
+  for (const [table, column, ddl] of [["patients", "insurance_no", "TEXT"], ["referrals", "status", "TEXT NOT NULL DEFAULT 'issued'"], ["queue", "station_id", "TEXT NOT NULL DEFAULT 'main'"]]) {
+    if (!db.prepare(`PRAGMA table_info(${table})`).all().some(item => item.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
 
   const clock = typeof today === "string" ? () => today : () => localDay(now());
   const stamp = () => (typeof today === "string" ? `${today}T08:00:00.000Z` : now().toISOString());
@@ -124,6 +129,7 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
     });
   }
   const facility = q("SELECT value FROM meta WHERE key = 'facility'").get().value;
+  q("INSERT OR IGNORE INTO stations (id, name, created_at) VALUES ('main', ?, ?)").run(facility, stamp());
 
   // ---------- reading ----------
   const patientRow = patientId => row(q("SELECT * FROM patients WHERE patient_id = ?").get(patientId));
@@ -150,7 +156,20 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
   };
   const nameOf = patient => ({ patientId: patient.patient_id, patientName: patient.name });
   const since = days => new Date(Date.parse(`${clock()}T00:00:00.000Z`) - days * DAY).toISOString().slice(0, 10);
-  const referralOf = item => compact({
+  /** How often, and when last, the receiving side read each referral through Junctura (from the capability-call audit lines). */
+  function referralViews() {
+    const views = new Map();
+    for (const line of rows(q("SELECT at, detail FROM audit WHERE action = 'capability.call' ORDER BY id").all())) {
+      let call;
+      try { call = JSON.parse(line.detail); } catch { continue; }
+      if (call?.capability !== "referral-summary" || call.outcome !== "answered" || typeof call.reference !== "string") continue;
+      const seen = views.get(call.reference) ?? { viewCount: 0 };
+      views.set(call.reference, { viewCount: seen.viewCount + 1, viewedAt: line.at });
+    }
+    return views;
+  }
+  const referralOf = (item, views = referralViews()) => compact({
+    ...views.get(item.referral_id), status: item.status ?? "issued",
     referralId: item.referral_id, issuedAt: item.issued_at, toFacility: item.to_facility, urgency: item.urgency, reason: item.reason,
     provisionalDiagnosis: item.diagnosis_name ? compact({ code: item.diagnosis_code, name: item.diagnosis_name }) : undefined, treatmentGiven: item.treatment_given,
   });
@@ -165,13 +184,13 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
     const allergies = allergiesOf(patientId);
     const vaccinations = vaccinationsOf(patientId);
     return compact({
-      patientId, patientName: patient.name, birthYear: patient.birth_year, sex: patient.sex, ward: patient.ward, phone: patient.phone,
+      patientId, patientName: patient.name, birthYear: patient.birth_year, sex: patient.sex, ward: patient.ward, phone: patient.phone, insuranceNo: patient.insurance_no,
       allergyState: allergyStateOf(patient, allergies.length), allergies,
       chronicConditions: rows(q("SELECT id, code, name, since FROM conditions WHERE patient_id = ? ORDER BY since, id").all(patientId)).map(compact),
       currentMedications: rows(q("SELECT id, name, dose, since FROM medications WHERE patient_id = ? AND stopped_on IS NULL ORDER BY since, id").all(patientId)),
       encounters: rows(q("SELECT * FROM encounters WHERE patient_id = ? ORDER BY date, id").all(patientId)).map(encounterOf),
       vaccinations, vaccinesDue: dosesDue(vaccinations, clock()),
-      referrals: rows(q("SELECT * FROM referrals WHERE patient_id = ? ORDER BY issued_at, referral_id").all(patientId)).map(referralOf),
+      referrals: (views => rows(q("SELECT * FROM referrals WHERE patient_id = ? ORDER BY issued_at, referral_id").all(patientId)).map(item => referralOf(item, views)))(referralViews()),
       updatedAt: patient.updated_at, vaccinationsUpdatedAt: patient.vaccinations_updated_at,
     });
   }
@@ -188,20 +207,28 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
       .sort((a, b) => a.due.localeCompare(b.due) || a.patientName.localeCompare(b.patientName, "vi"));
   }
   function referrals() {
+    const views = referralViews();
     return rows(q("SELECT r.*, p.name FROM referrals r JOIN patients p ON p.patient_id = r.patient_id ORDER BY r.issued_at DESC, r.referral_id DESC").all())
-      .map(item => ({ ...referralOf(item), patientId: item.patient_id, patientName: item.name }));
+      .map(item => ({ ...referralOf(item, views), patientId: item.patient_id, patientName: item.name }));
   }
 
   // ---------- queue ----------
+  /** Young children and older people are called ahead of ordinary arrivals (after urgent cases). */
+  const groupOf = birthYear => { const age = Number(clock().slice(0, 4)) - birthYear; return age < 6 ? "child" : age >= 60 ? "senior" : null; };
   const queueItem = item => {
     const patient = patientRow(item.patient_id);
     return {
+      group: groupOf(patient.birth_year), station: item.station_id ?? "main",
       id: item.id, ticket: String(item.ticket).padStart(3, "0"), patientId: item.patient_id, patientName: patient.name, birthYear: patient.birth_year, sex: patient.sex,
       reason: item.reason, priority: item.priority, state: item.state, since: item.created_at, calledAt: item.called_at ?? null, doneAt: item.done_at ?? null,
       severeAllergy: summary(patient).severeAllergy, allergyState: summary(patient).allergyState,
     };
   };
-  const queueToday = () => rows(q("SELECT * FROM queue WHERE day = ? ORDER BY ticket").all(clock())).map(queueItem);
+  const rank = entry => (entry.state !== "waiting" ? 3 : entry.priority === "urgent" ? 0 : entry.group ? 1 : 2);
+  function queueToday(stationId) {
+    const found = stationId ? rows(q("SELECT * FROM queue WHERE day = ? AND station_id = ? ORDER BY ticket").all(clock(), stationId)) : rows(q("SELECT * FROM queue WHERE day = ? ORDER BY ticket").all(clock()));
+    return found.map(queueItem).sort((a, b) => rank(a) - rank(b) || a.ticket.localeCompare(b.ticket));
+  }
 
   function overview() {
     const all = allPatients();
@@ -264,8 +291,8 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
       const duplicate = rows(q("SELECT * FROM patients WHERE name_fold = ? AND birth_year = ?").all(fold(input.patientName), input.birthYear));
       if (duplicate.length && !input.confirmDuplicate) throw new DomainError("possible-duplicate", 409, { matches: duplicate.map(summary) });
       const patientId = nextPatientId();
-      q("INSERT INTO patients (patient_id, name, name_fold, birth_year, sex, ward, phone, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
-        .run(patientId, input.patientName, fold(input.patientName), input.birthYear, input.sex, input.ward, input.phone ?? null, stamp(), stamp());
+      q("INSERT INTO patients (patient_id, name, name_fold, birth_year, sex, ward, phone, insurance_no, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
+        .run(patientId, input.patientName, fold(input.patientName), input.birthYear, input.sex, input.ward, input.phone ?? null, input.insuranceNo ?? null, stamp(), stamp());
       log(by, "patient.create", patientId, "Thêm người bệnh mới");
       return get(patientId);
     });
@@ -381,10 +408,12 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
   function enqueue(input, by) {
     return tx(() => {
       const patient = need(input.patientId);
+      const stationId = input.stationId ?? "main";
+      if (!q("SELECT 1 FROM stations WHERE id = ?").get(stationId)) throw new DomainError("station-not-found", 404);
       const day = clock();
       if (q("SELECT 1 FROM queue WHERE day = ? AND patient_id = ? AND state IN ('waiting','called')").get(day, input.patientId)) throw new DomainError("already-in-queue", 409);
-      const ticket = (q("SELECT MAX(ticket) AS n FROM queue WHERE day = ?").get(day).n ?? 0) + 1;
-      const result = q("INSERT INTO queue (day, ticket, patient_id, reason, priority, created_at, by_user) VALUES (?,?,?,?,?,?,?)").run(day, ticket, input.patientId, input.reason, input.priority ?? "normal", stamp(), by.username);
+      const ticket = (q("SELECT MAX(ticket) AS n FROM queue WHERE day = ? AND station_id = ?").get(day, stationId).n ?? 0) + 1;
+      const result = q("INSERT INTO queue (day, ticket, patient_id, reason, priority, created_at, by_user, station_id) VALUES (?,?,?,?,?,?,?,?)").run(day, ticket, input.patientId, input.reason, input.priority ?? "normal", stamp(), by.username, stationId);
       log(by, "queue.add", patient.patient_id, `Số ${String(ticket).padStart(3, "0")}: ${input.reason}`);
       return queueItem(row(q("SELECT * FROM queue WHERE id = ?").get(Number(result.lastInsertRowid))));
     });
@@ -404,8 +433,73 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
     });
   }
 
+  // ---------- insurance card, referral status ----------
+  function setInsurance(patientId, insuranceNo, by) {
+    return tx(() => {
+      need(patientId);
+      q("UPDATE patients SET insurance_no = ? WHERE patient_id = ?").run(insuranceNo ?? null, patientId);
+      touch(patientId);
+      log(by, "patient.insurance", patientId, insuranceNo ? "Cập nhật mã thẻ BHYT" : "Xóa mã thẻ BHYT");
+      return get(patientId);
+    });
+  }
+
+  function setReferralStatus(patientId, referralId, status, by) {
+    return tx(() => {
+      need(patientId);
+      const result = q("UPDATE referrals SET status = ? WHERE referral_id = ? AND patient_id = ?").run(status, referralId, patientId);
+      if (!result.changes) throw new DomainError("referral-not-found", 404);
+      touch(patientId);
+      log(by, "referral.status", patientId, `${referralId}: ${status}`);
+      return get(patientId);
+    });
+  }
+
+  // ---------- stations ----------
+  const stations = () => rows(q("SELECT id, name FROM stations ORDER BY created_at, id").all());
+  function addStation(name, by) {
+    return tx(() => {
+      if (q("SELECT 1 FROM stations WHERE name = ?").get(name)) throw new DomainError("station-exists", 409);
+      const id = `st-${(q("SELECT COUNT(*) AS n FROM stations").get().n) + 1}`;
+      q("INSERT INTO stations (id, name, created_at) VALUES (?,?,?)").run(id, name, stamp());
+      log(by, "station.add", null, name);
+      return stations();
+    });
+  }
+  function renameStation(id, name, by) {
+    return tx(() => {
+      if (!q("SELECT 1 FROM stations WHERE id = ?").get(id)) throw new DomainError("station-not-found", 404);
+      if (q("SELECT 1 FROM stations WHERE name = ? AND id <> ?").get(name, id)) throw new DomainError("station-exists", 409);
+      q("UPDATE stations SET name = ? WHERE id = ?").run(name, id);
+      log(by, "station.rename", null, name);
+      return stations();
+    });
+  }
+
+  // ---------- self service (no sign-in): only a ticket number, never a person's data ----------
+  const SELF = { username: "self-service", displayName: "Người bệnh tự lấy số" };
+  function selfTicket({ patientName, birthYear, reason, stationId = "main" }) {
+    const matches = rows(q("SELECT patient_id FROM patients WHERE name_fold = ? AND birth_year = ?").all(fold(patientName.trim()), birthYear));
+    if (matches.length !== 1) throw new DomainError("record-not-found", 404);
+    const patientId = matches[0].patient_id;
+    const existing = row(q("SELECT * FROM queue WHERE day = ? AND patient_id = ? AND state IN ('waiting','called')").get(clock(), patientId));
+    const entry = existing ? queueItem(existing) : enqueue({ patientId, reason, stationId }, SELF);
+    const ahead = queueToday(entry.station).filter(item => item.state === "waiting" && item.id !== entry.id && (rank(item) < rank(entry) || (rank(item) === rank(entry) && item.ticket < entry.ticket))).length;
+    return { ticket: entry.ticket, state: entry.state, ahead, station: entry.station, already: Boolean(existing) };
+  }
+  /** What the waiting-room screen shows: ticket numbers only. */
+  function board(stationId = "main") {
+    const line = queueToday(stationId);
+    return {
+      today: clock(), station: stations().find(item => item.id === stationId)?.name ?? null,
+      calling: line.filter(item => item.state === "called").map(item => item.ticket),
+      waiting: line.filter(item => item.state === "waiting").slice(0, 12).map(item => ({ ticket: item.ticket, priority: item.priority === "urgent" ? "urgent" : item.group ? "group" : "normal" })),
+      waitingCount: line.filter(item => item.state === "waiting").length,
+    };
+  }
+
   // ---------- settings ----------
-  const DEFAULTS = { aiSummary: false };
+  const DEFAULTS = { aiSummary: false, aiModel: false };
   function settings() {
     const stored = Object.fromEntries(rows(q("SELECT key, value FROM settings").all()).map(item => [item.key, JSON.parse(item.value)]));
     return { ...DEFAULTS, ...stored };
@@ -424,7 +518,7 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
   return {
     facility, staff, db,
     get today() { return clock(); },
-    list, get, vaccinesDue, referrals, overview, queueToday, audit, settings,
+    list, get, vaccinesDue, referrals, overview, queueToday, audit, settings, stations, board,
     summaryOf(patientId) {
       const record = get(patientId);
       return record ? summarize(record, clock()) : null;
@@ -433,7 +527,7 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
     patientIdBySubject: subject => row(q("SELECT patient_id FROM patients WHERE subject = ?").get(subject))?.patient_id ?? null,
     allergyConflicts,
     log,
-    createPatient, setAllergies, addCondition, addMedication, stopMedication, addEncounter, addVaccination, addReferral,
+    createPatient, setInsurance, setReferralStatus, addStation, renameStation, selfTicket, setAllergies, addCondition, addMedication, stopMedication, addEncounter, addVaccination, addReferral,
     enqueue, callQueue: (id, by) => moveQueue(id, "call", by), finishQueue: (id, by) => moveQueue(id, "done", by), cancelQueue: (id, by) => moveQueue(id, "cancel", by),
     updateSettings,
     close: () => db.close(),

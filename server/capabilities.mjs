@@ -89,9 +89,9 @@ export function createCapabilityHandler({ data, junctura, now = () => new Date()
     res.end(payload);
   };
   /** One audit line per call: which capability, for what purpose, how it ended. Never the data itself. */
-  const record = (slug, context, patientId, outcome) =>
+  const record = (slug, context, patientId, outcome, reference) =>
     data.log(SERVICE, "capability.call", patientId ?? null,
-      JSON.stringify({ capability: slug, purpose: context?.purpose ?? null, emergency: context?.emergency === true, outcome }));
+      JSON.stringify({ capability: slug, purpose: context?.purpose ?? null, emergency: context?.emergency === true, outcome, ...(reference && { reference }) }));
 
   async function answer(req) {
     const slug = /^\/capabilities\/([a-z0-9-]+)$/.exec(new URL(req.url, "http://localhost").pathname)?.[1];
@@ -124,7 +124,7 @@ export function createCapabilityHandler({ data, junctura, now = () => new Date()
     const stamp = now();
     const output = patient && PROJECTIONS[slug](patient, { input, facility: data.facility, now: stamp.toISOString() });
     if (!output) {
-      record(slug, context, patientId, "no_record");
+      record(slug, context, patientId, "no_record", input.referralId);
       throw new Refusal(404, "no_record");
     }
     const outputIssues = validateValue(contract.outputSchema, output);
@@ -132,7 +132,7 @@ export function createCapabilityHandler({ data, junctura, now = () => new Date()
       record(slug, context, patientId, "data_error");
       throw new Refusal(500, "output_does_not_fit_contract", outputIssues);
     }
-    record(slug, context, patientId, "answered");
+    record(slug, context, patientId, "answered", input.referralId);
     return { output };
   }
 

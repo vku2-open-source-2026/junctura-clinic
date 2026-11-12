@@ -1,0 +1,307 @@
+[
+ {
+  "name": "Paracetamol",
+  "dose": "500 mg x 3 lần/ngày khi sốt, đau",
+  "group": "Giảm đau, hạ sốt"
+ },
+ {
+  "name": "Ibuprofen",
+  "dose": "400 mg x 2 lần/ngày sau ăn",
+  "group": "Giảm đau, kháng viêm"
+ },
+ {
+  "name": "Diclofenac",
+  "dose": "50 mg x 2 lần/ngày sau ăn",
+  "group": "Giảm đau, kháng viêm"
+ },
+ {
+  "name": "Aspirin",
+  "dose": "81 mg x 1 lần/ngày",
+  "group": "Chống kết tập tiểu cầu"
+ },
+ {
+  "name": "Amoxicillin",
+  "dose": "500 mg x 3 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Amoxicillin + acid clavulanic",
+  "dose": "625 mg x 2 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Azithromycin",
+  "dose": "500 mg x 1 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Cefuroxim",
+  "dose": "500 mg x 2 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Ciprofloxacin",
+  "dose": "500 mg x 2 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Cefixim",
+  "dose": "200 mg x 2 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Metronidazol",
+  "dose": "250 mg x 3 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Doxycyclin",
+  "dose": "100 mg x 2 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Penicillin V",
+  "dose": "500 mg x 3 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Cotrimoxazol",
+  "dose": "960 mg x 2 lần/ngày",
+  "group": "Kháng sinh"
+ },
+ {
+  "name": "Amlodipin",
+  "dose": "5 mg x 1 lần/ngày",
+  "group": "Hạ huyết áp"
+ },
+ {
+  "name": "Losartan",
+  "dose": "50 mg x 1 lần/ngày",
+  "group": "Hạ huyết áp"
+ },
+ {
+  "name": "Enalapril",
+  "dose": "5 mg x 1 lần/ngày",
+  "group": "Hạ huyết áp"
+ },
+ {
+  "name": "Atenolol",
+  "dose": "50 mg x 1 lần/ngày",
+  "group": "Hạ huyết áp"
+ },
+ {
+  "name": "Hydrochlorothiazid",
+  "dose": "25 mg x 1 lần/ngày",
+  "group": "Lợi tiểu"
+ },
+ {
+  "name": "Furosemid",
+  "dose": "40 mg x 1 lần/ngày",
+  "group": "Lợi tiểu"
+ },
+ {
+  "name": "Metformin",
+  "dose": "500 mg x 2 lần/ngày",
+  "group": "Hạ đường huyết"
+ },
+ {
+  "name": "Gliclazid",
+  "dose": "60 mg x 1 lần/ngày",
+  "group": "Hạ đường huyết"
+ },
+ {
+  "name": "Atorvastatin",
+  "dose": "10 mg x 1 lần/ngày buổi tối",
+  "group": "Hạ mỡ máu"
+ },
+ {
+  "name": "Simvastatin",
+  "dose": "20 mg x 1 lần/ngày buổi tối",
+  "group": "Hạ mỡ máu"
+ },
+ {
+  "name": "Omeprazol",
+  "dose": "20 mg x 1 lần/ngày trước ăn",
+  "group": "Giảm tiết acid dạ dày"
+ },
+ {
+  "name": "Esomeprazol",
+  "dose": "40 mg x 1 lần/ngày",
+  "group": "Giảm tiết acid dạ dày"
+ },
+ {
+  "name": "Domperidon",
+  "dose": "10 mg x 3 lần/ngày trước ăn",
+  "group": "Chống nôn"
+ },
+ {
+  "name": "Oresol",
+  "dose": "1 gói pha 200 ml, uống sau mỗi lần tiêu chảy",
+  "group": "Bù nước điện giải"
+ },
+ {
+  "name": "Loperamid",
+  "dose": "2 mg khi cần",
+  "group": "Cầm tiêu chảy"
+ },
+ {
+  "name": "Smecta (diosmectit)",
+  "dose": "1 gói x 3 lần/ngày",
+  "group": "Cầm tiêu chảy"
+ },
+ {
+  "name": "Bisacodyl",
+  "dose": "5 mg x 1 lần/ngày",
+  "group": "Nhuận tràng"
+ },
+ {
+  "name": "Loratadin",
+  "dose": "10 mg x 1 lần/ngày",
+  "group": "Kháng histamin"
+ },
+ {
+  "name": "Cetirizin",
+  "dose": "10 mg x 1 lần/ngày",
+  "group": "Kháng histamin"
+ },
+ {
+  "name": "Chlorpheniramin",
+  "dose": "4 mg x 3 lần/ngày",
+  "group": "Kháng histamin"
+ },
+ {
+  "name": "Prednisolon",
+  "dose": "5 mg x 2 lần/ngày",
+  "group": "Corticoid"
+ },
+ {
+  "name": "Methylprednisolon",
+  "dose": "16 mg x 1 lần/ngày",
+  "group": "Corticoid"
+ },
+ {
+  "name": "Salbutamol (khí dung)",
+  "dose": "2,5 mg khí dung khi cần",
+  "group": "Giãn phế quản"
+ },
+ {
+  "name": "Salbutamol (xịt)",
+  "dose": "100 mcg x 2 nhát khi khó thở",
+  "group": "Giãn phế quản"
+ },
+ {
+  "name": "Budesonid (xịt)",
+  "dose": "200 mcg x 2 lần/ngày",
+  "group": "Corticoid hít"
+ },
+ {
+  "name": "Acetylcystein",
+  "dose": "200 mg x 3 lần/ngày",
+  "group": "Long đờm"
+ },
+ {
+  "name": "Bromhexin",
+  "dose": "8 mg x 3 lần/ngày",
+  "group": "Long đờm"
+ },
+ {
+  "name": "Dextromethorphan",
+  "dose": "15 mg x 3 lần/ngày",
+  "group": "Giảm ho"
+ },
+ {
+  "name": "Vitamin C",
+  "dose": "500 mg x 1 lần/ngày",
+  "group": "Vitamin"
+ },
+ {
+  "name": "Vitamin B1 B6 B12",
+  "dose": "1 viên x 2 lần/ngày",
+  "group": "Vitamin"
+ },
+ {
+  "name": "Sắt fumarat + acid folic",
+  "dose": "1 viên x 1 lần/ngày",
+  "group": "Bổ sung sắt"
+ },
+ {
+  "name": "Canxi + vitamin D3",
+  "dose": "1 viên x 1 lần/ngày",
+  "group": "Bổ sung canxi"
+ },
+ {
+  "name": "Kẽm",
+  "dose": "10 mg x 1 lần/ngày",
+  "group": "Bổ sung kẽm"
+ },
+ {
+  "name": "Nitroglycerin",
+  "dose": "0,5 mg ngậm dưới lưỡi khi đau ngực",
+  "group": "Giãn mạch vành"
+ },
+ {
+  "name": "Clopidogrel",
+  "dose": "75 mg x 1 lần/ngày",
+  "group": "Chống kết tập tiểu cầu"
+ },
+ {
+  "name": "Allopurinol",
+  "dose": "100 mg x 1 lần/ngày",
+  "group": "Giảm acid uric"
+ },
+ {
+  "name": "Colchicin",
+  "dose": "1 mg x 1 lần/ngày",
+  "group": "Điều trị gút cấp"
+ },
+ {
+  "name": "Diazepam",
+  "dose": "5 mg khi cần",
+  "group": "An thần"
+ },
+ {
+  "name": "Levothyroxin",
+  "dose": "50 mcg x 1 lần/ngày buổi sáng",
+  "group": "Hormon tuyến giáp"
+ },
+ {
+  "name": "Mebendazol",
+  "dose": "500 mg liều duy nhất",
+  "group": "Tẩy giun"
+ },
+ {
+  "name": "Albendazol",
+  "dose": "400 mg liều duy nhất",
+  "group": "Tẩy giun"
+ },
+ {
+  "name": "Fluconazol",
+  "dose": "150 mg liều duy nhất",
+  "group": "Kháng nấm"
+ },
+ {
+  "name": "Clotrimazol (bôi)",
+  "dose": "Bôi 2 lần/ngày",
+  "group": "Kháng nấm"
+ },
+ {
+  "name": "Povidon iod",
+  "dose": "Sát khuẩn ngoài da",
+  "group": "Sát khuẩn"
+ },
+ {
+  "name": "Mupirocin (bôi)",
+  "dose": "Bôi 2 lần/ngày",
+  "group": "Kháng sinh bôi"
+ },
+ {
+  "name": "Betamethason (bôi)",
+  "dose": "Bôi mỏng 2 lần/ngày",
+  "group": "Corticoid bôi"
+ },
+ {
+  "name": "Nhỏ mắt Natri clorid 0,9%",
+  "dose": "1–2 giọt x 3 lần/ngày",
+  "group": "Vệ sinh mắt"
+ }
+]

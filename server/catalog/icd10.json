@@ -1,0 +1,278 @@
+[
+ {
+  "code": "A09",
+  "name": "Tiêu chảy và viêm dạ dày ruột nghi nhiễm trùng"
+ },
+ {
+  "code": "A15",
+  "name": "Lao phổi"
+ },
+ {
+  "code": "A90",
+  "name": "Sốt xuất huyết Dengue"
+ },
+ {
+  "code": "B01",
+  "name": "Thủy đậu"
+ },
+ {
+  "code": "B02",
+  "name": "Zona (giời leo)"
+ },
+ {
+  "code": "B34",
+  "name": "Nhiễm virus, vị trí không xác định"
+ },
+ {
+  "code": "B35",
+  "name": "Nấm da"
+ },
+ {
+  "code": "B86",
+  "name": "Ghẻ"
+ },
+ {
+  "code": "D50",
+  "name": "Thiếu máu do thiếu sắt"
+ },
+ {
+  "code": "E03",
+  "name": "Suy giáp"
+ },
+ {
+  "code": "E11",
+  "name": "Đái tháo đường type 2"
+ },
+ {
+  "code": "E14",
+  "name": "Đái tháo đường, không xác định"
+ },
+ {
+  "code": "E66",
+  "name": "Béo phì"
+ },
+ {
+  "code": "E78",
+  "name": "Rối loạn chuyển hóa lipid máu"
+ },
+ {
+  "code": "F32",
+  "name": "Giai đoạn trầm cảm"
+ },
+ {
+  "code": "F41",
+  "name": "Rối loạn lo âu"
+ },
+ {
+  "code": "G43",
+  "name": "Đau nửa đầu (migraine)"
+ },
+ {
+  "code": "G47",
+  "name": "Rối loạn giấc ngủ"
+ },
+ {
+  "code": "H10",
+  "name": "Viêm kết mạc"
+ },
+ {
+  "code": "H66",
+  "name": "Viêm tai giữa"
+ },
+ {
+  "code": "I10",
+  "name": "Tăng huyết áp vô căn"
+ },
+ {
+  "code": "I20.9",
+  "name": "Cơn đau thắt ngực"
+ },
+ {
+  "code": "I25",
+  "name": "Bệnh tim thiếu máu cục bộ mạn"
+ },
+ {
+  "code": "I50",
+  "name": "Suy tim"
+ },
+ {
+  "code": "I63",
+  "name": "Nhồi máu não"
+ },
+ {
+  "code": "I83",
+  "name": "Giãn tĩnh mạch chi dưới"
+ },
+ {
+  "code": "J00",
+  "name": "Viêm mũi họng cấp (cảm lạnh)"
+ },
+ {
+  "code": "J02",
+  "name": "Viêm họng cấp"
+ },
+ {
+  "code": "J03",
+  "name": "Viêm amidan cấp"
+ },
+ {
+  "code": "J06.9",
+  "name": "Nhiễm khuẩn hô hấp trên cấp"
+ },
+ {
+  "code": "J12",
+  "name": "Viêm phổi do virus"
+ },
+ {
+  "code": "J18",
+  "name": "Viêm phổi"
+ },
+ {
+  "code": "J20",
+  "name": "Viêm phế quản cấp"
+ },
+ {
+  "code": "J30",
+  "name": "Viêm mũi dị ứng"
+ },
+ {
+  "code": "J44",
+  "name": "Bệnh phổi tắc nghẽn mạn tính"
+ },
+ {
+  "code": "J45",
+  "name": "Hen phế quản"
+ },
+ {
+  "code": "K21",
+  "name": "Trào ngược dạ dày thực quản"
+ },
+ {
+  "code": "K29",
+  "name": "Viêm dạ dày và tá tràng"
+ },
+ {
+  "code": "K30",
+  "name": "Khó tiêu"
+ },
+ {
+  "code": "K35",
+  "name": "Viêm ruột thừa cấp"
+ },
+ {
+  "code": "K59",
+  "name": "Rối loạn chức năng ruột khác (táo bón)"
+ },
+ {
+  "code": "K76",
+  "name": "Bệnh gan khác"
+ },
+ {
+  "code": "L20",
+  "name": "Viêm da cơ địa"
+ },
+ {
+  "code": "L23",
+  "name": "Viêm da tiếp xúc dị ứng"
+ },
+ {
+  "code": "L30",
+  "name": "Viêm da khác"
+ },
+ {
+  "code": "L50",
+  "name": "Mày đay"
+ },
+ {
+  "code": "L70",
+  "name": "Mụn trứng cá"
+ },
+ {
+  "code": "M10",
+  "name": "Bệnh gút"
+ },
+ {
+  "code": "M54.5",
+  "name": "Đau thắt lưng"
+ },
+ {
+  "code": "M79",
+  "name": "Bệnh phần mềm khác (đau cơ)"
+ },
+ {
+  "code": "M81",
+  "name": "Loãng xương"
+ },
+ {
+  "code": "N10",
+  "name": "Viêm thận bể thận cấp"
+ },
+ {
+  "code": "N39.0",
+  "name": "Nhiễm khuẩn đường tiết niệu"
+ },
+ {
+  "code": "N76",
+  "name": "Viêm âm đạo"
+ },
+ {
+  "code": "O80",
+  "name": "Sinh thường một thai"
+ },
+ {
+  "code": "R05",
+  "name": "Ho"
+ },
+ {
+  "code": "R10",
+  "name": "Đau bụng và đau vùng chậu"
+ },
+ {
+  "code": "R11",
+  "name": "Buồn nôn và nôn"
+ },
+ {
+  "code": "R42",
+  "name": "Chóng mặt"
+ },
+ {
+  "code": "R50",
+  "name": "Sốt không rõ nguyên nhân"
+ },
+ {
+  "code": "R51",
+  "name": "Đau đầu"
+ },
+ {
+  "code": "S01",
+  "name": "Vết thương hở vùng đầu"
+ },
+ {
+  "code": "S61",
+  "name": "Vết thương hở cổ tay và bàn tay"
+ },
+ {
+  "code": "S93",
+  "name": "Bong gân cổ chân"
+ },
+ {
+  "code": "T14",
+  "name": "Tổn thương, vị trí không xác định"
+ },
+ {
+  "code": "T78.4",
+  "name": "Dị ứng, không xác định"
+ },
+ {
+  "code": "Z00",
+  "name": "Khám sức khỏe tổng quát"
+ },
+ {
+  "code": "Z23",
+  "name": "Tiêm chủng phòng bệnh"
+ },
+ {
+  "code": "Z34",
+  "name": "Theo dõi thai kỳ bình thường"
+ }
+]

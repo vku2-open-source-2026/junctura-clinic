@@ -1,26 +1,29 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
 import { ActionList, AiSummaryPanel, AlertBanner, Badge, Button, ConfirmDialog, PatientBanner, Section, SourceBadge, StaleNotice, TabPanel, Tabs, WorkspaceLayout, useToast } from "@junctura/health-ui";
-import { ArrowLeft, FileOutput, Pill, Plus, ShieldAlert, Stethoscope, Syringe } from "lucide-react";
+import { ArrowLeft, CreditCard, FileOutput, Pill, Plus, ShieldAlert, Stethoscope, Syringe } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ApiError, getPatient, getSummary, stopMedication } from "./api";
+import { ApiError, getPatient, getSummary, setReferralStatus, stopMedication } from "./api";
 import { allergyView, encounterDetail, historyOf, PATIENT_TABS, type PatientTab } from "./domain";
-import { AllergyDialog, ConditionDialog, ExamDialog, MedicationDialog, ReferralDialog, VaccinateDialog } from "./Forms";
+import { AllergyDialog, ConditionDialog, ExamDialog, InsuranceDialog, MedicationDialog, ReferralDialog, VaccinateDialog } from "./Forms";
 import { formatDate, severityLabel } from "./format";
-import { EventList, UrgencyBadge } from "./parts";
+import { EventList, ReferralProgress, UrgencyBadge } from "./parts";
 import { dueLabel } from "./Lists";
 import { Link, navigate } from "./router";
 import { Remote, useRemote, useSession } from "./session";
-import type { PatientRecord } from "./types";
+import type { PatientRecord, ReferralStatus } from "./types";
 
 const TAB_LABEL: Record<PatientTab, string> = { summary: "Tổng quan", medications: "Thuốc đang dùng", vaccinations: "Tiêm chủng", referrals: "Chuyển tuyến", history: "Lịch sử" };
 const ID_BASE = "record";
 
 function Empty({ children }: { children: string }) { return <p className="text-sm text-muted">{children}</p>; }
 
-function Summary({ record, onAllergy, onCondition }: { record: PatientRecord; onAllergy?: () => void; onCondition?: () => void }) {
+function Summary({ record, onAllergy, onCondition, onInsurance }: { record: PatientRecord; onAllergy?: () => void; onCondition?: () => void; onInsurance?: () => void }) {
   return (
     <div className="space-y-6">
+      <Section title="Thẻ BHYT" actions={onInsurance ? <Button variant="ghost" icon={<CreditCard aria-hidden className="size-4" />} onClick={onInsurance}>{record.insuranceNo ? "Sửa mã thẻ" : "Nhập mã thẻ"}</Button> : undefined}>
+        {record.insuranceNo ? <p className="font-mono text-ink">{record.insuranceNo}</p> : <Empty>Chưa ghi nhận mã thẻ BHYT.</Empty>}
+      </Section>
       {onAllergy && <Section title="Dị ứng" description="Cập nhật khi hỏi lại người bệnh. Chưa ghi nhận khác với không dị ứng."><Button variant="secondary" icon={<ShieldAlert aria-hidden className="size-4" />} onClick={onAllergy}>Cập nhật dị ứng</Button></Section>}
       <Section title="Bệnh mạn tính" count={record.chronicConditions.length} actions={onCondition ? <Button variant="ghost" icon={<Plus aria-hidden className="size-4" />} onClick={onCondition}>Thêm bệnh mạn tính</Button> : undefined}>
         {record.chronicConditions.length === 0 ? <Empty>Chưa ghi nhận bệnh mạn tính.</Empty> : (
@@ -38,7 +41,7 @@ function Summary({ record, onAllergy, onCondition }: { record: PatientRecord; on
   );
 }
 
-type Dialog = "exam" | "vaccinate" | "referral" | "allergy" | "condition" | "medication";
+type Dialog = "exam" | "vaccinate" | "referral" | "allergy" | "condition" | "medication" | "insurance";
 
 export function PatientRecordPage({ patientId, tab, search = "" }: { patientId: string; tab: PatientTab; search?: string }) {
   const { settings, setCrumbs, can, station, expire } = useSession();
@@ -48,18 +51,22 @@ export function PatientRecordPage({ patientId, tab, search = "" }: { patientId: 
   const [fresh, setFresh] = useState<PatientRecord | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [stopping, setStopping] = useState<{ id: number; name: string } | null>(null);
-  const [summary, setSummary] = useState<{ loading: boolean; text?: string }>({ loading: false });
+  const [summary, setSummary] = useState<{ loading: boolean; text?: string; kind?: "template" | "ai"; notice?: string }>({ loading: false });
   const rawQueue = Number(new URLSearchParams(search).get("queue"));
   const queueId = Number.isInteger(rawQueue) && rawQueue > 0 ? rawQueue : undefined;
   useEffect(() => { setFresh(null); setSummary({ loading: false }); }, [patientId]);
   const saved = (message: string) => (record: PatientRecord) => { setFresh(record); setSummary({ loading: false }); notify(message, "ok"); };
   const generate = async () => {
     setSummary({ loading: true });
-    try { setSummary({ loading: false, text: (await getSummary(settings, patientId)).lines.join("\n") }); }
+    try { const result = await getSummary(settings, patientId); setSummary({ loading: false, text: result.lines.join("\n"), kind: result.kind, notice: result.notice }); }
     catch (error) {
       if (error instanceof ApiError && error.status === 401) return expire();
       setSummary({ loading: false }); notify("Chưa soạn được bản tóm tắt.", "danger");
     }
+  };
+  const changeStatus = async (referralId: string, status: ReferralStatus) => {
+    try { setFresh(await setReferralStatus(settings, patientId, referralId, status)); notify("Đã đổi trạng thái phiếu chuyển tuyến", "ok"); }
+    catch (error) { if (error instanceof ApiError && error.status === 401) return expire(); notify("Chưa đổi được trạng thái. Hãy thử lại.", "danger"); }
   };
   const confirmStop = async () => {
     if (!stopping) return;
@@ -104,9 +111,9 @@ export function PatientRecordPage({ patientId, tab, search = "" }: { patientId: 
                     id: item.code, tone: item.state === "overdue" ? "warn" : "brand", title: `${item.vaccine} · mũi ${item.nextDose}`, detail: `${dueLabel(item)} · hạn ${formatDate(item.due)}`,
                   }))} />
                 </Section>
-                <Section title="Tóm tắt"><AiSummaryPanel enabled={station.aiSummary} kind="template" summary={summary.text} loading={summary.loading} onGenerate={() => void generate()} /></Section>
+                <Section title="Tóm tắt"><AiSummaryPanel enabled={station.aiSummary} kind={summary.kind ?? "template"} summary={summary.text} loading={summary.loading} onGenerate={() => void generate()} />{summary.notice === "ai-unavailable" && <p role="status" className="mt-2 text-sm text-muted">Mô hình AI chưa trả lời, đây là bản tóm tắt theo mẫu.</p>}</Section>
               </>}>
-              <TabPanel tabsId={ID_BASE} id="summary" hidden={tab !== "summary"}><Summary record={record} onAllergy={can("exam") ? () => setDialog("allergy") : undefined} onCondition={can("exam") ? () => setDialog("condition") : undefined} /></TabPanel>
+              <TabPanel tabsId={ID_BASE} id="summary" hidden={tab !== "summary"}><Summary record={record} onAllergy={can("exam") ? () => setDialog("allergy") : undefined} onCondition={can("exam") ? () => setDialog("condition") : undefined} onInsurance={can("register") ? () => setDialog("insurance") : undefined} /></TabPanel>
               <TabPanel tabsId={ID_BASE} id="medications" hidden={tab !== "medications"}>
                 {can("exam") && <div className="mb-3"><Button variant="secondary" icon={<Pill aria-hidden className="size-4" />} onClick={() => setDialog("medication")}>Thêm thuốc đang dùng</Button></div>}
                 {record.currentMedications.length === 0 ? <Empty>Chưa ghi nhận thuốc đang dùng.</Empty> : (
@@ -133,6 +140,7 @@ export function PatientRecordPage({ patientId, tab, search = "" }: { patientId: 
                         <p className="flex flex-wrap items-center gap-2"><span className="font-medium text-ink">{item.toFacility}</span><UrgencyBadge urgency={item.urgency} /><Badge>{formatDate(item.issuedAt)}</Badge><Link to={`/phieu-chuyen-tuyen/${encodeURIComponent(record.patientId)}/${encodeURIComponent(item.referralId)}`} className="text-sm font-medium text-brand underline-offset-2 hover:underline">Xem và in phiếu</Link></p>
                         <p className="text-sm text-ink-2">{item.reason}</p>
                         {item.treatmentGiven && <p className="text-sm text-muted">Đã xử trí: {item.treatmentGiven}</p>}
+                        <ReferralProgress referral={item} onStatus={can("refer") ? status => void changeStatus(item.referralId, status) : undefined} />
                       </li>
                     ))}
                   </ul>
@@ -147,6 +155,7 @@ export function PatientRecordPage({ patientId, tab, search = "" }: { patientId: 
             {dialog === "referral" && <ReferralDialog record={record} open onClose={() => setDialog(null)} onSaved={result => { saved(`Đã lập phiếu ${result.referralId}`)(result.record); navigate(`/phieu-chuyen-tuyen/${encodeURIComponent(record.patientId)}/${encodeURIComponent(result.referralId)}`); }} />}
             {dialog === "allergy" && <AllergyDialog record={record} open onClose={() => setDialog(null)} onSaved={saved("Đã cập nhật dị ứng")} />}
             {dialog === "condition" && <ConditionDialog record={record} open onClose={() => setDialog(null)} onSaved={saved("Đã thêm bệnh mạn tính")} />}
+            {dialog === "insurance" && <InsuranceDialog record={record} open onClose={() => setDialog(null)} onSaved={saved("Đã cập nhật mã thẻ BHYT")} />}
             {dialog === "medication" && <MedicationDialog record={record} open onClose={() => setDialog(null)} onSaved={saved("Đã thêm thuốc")} />}
             <ConfirmDialog open={stopping !== null} title={`Ngừng ${stopping?.name ?? "thuốc"}?`} description="Thuốc sẽ rời danh sách đang dùng. Việc này được ghi vào nhật ký." danger confirmLabel="Ngừng thuốc" onConfirm={() => void confirmStop()} onCancel={() => setStopping(null)} />
           </div>

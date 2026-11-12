@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { createServer as createSecureServer } from "node:https";
 import { createJuncturaClient } from "@junctura/server-client";
 import { createApp } from "./app.mjs";
+import { createSummarizer } from "./ai.mjs";
 import { PROVIDED, createCapabilityHandler } from "./capabilities.mjs";
 import { loadConfig } from "./config.mjs";
 import { loadClinicData } from "./data.mjs";
@@ -26,7 +27,7 @@ const portFlag = process.argv.indexOf("--port");
 if (portFlag !== -1) config = Object.freeze({ ...config, port: Number(process.argv[portFlag + 1]) });
 const verifier = createVerifier({ issuer: config.issuer, clientId: config.webClientId });
 
-const server = createServer(createApp({ config, data, verifier }));
+const server = createServer(createApp({ config, data, verifier, summarizer: config.ai ? createSummarizer(config.ai) : undefined }));
 server.listen(config.port, config.host, () => {
   console.log(`Junctura Clinic (${data.facility}) listening on http://${config.host}:${server.address().port}`);
 });

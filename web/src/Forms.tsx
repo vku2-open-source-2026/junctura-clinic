@@ -3,7 +3,8 @@
 import { AlertBanner, Button, Dialog, SelectField, TextAreaField, TextField, useToast } from "@junctura/health-ui";
 import { Plus, Trash2 } from "lucide-react";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
-import { addCondition, addEncounter, addMedication, addReferral, addVaccination, ApiError, createPatient, enqueue, saveAllergies } from "./api";
+import { addCondition, addEncounter, addMedication, addReferral, addVaccination, ApiError, createPatient, enqueue, saveAllergies, saveInsurance } from "./api";
+import { DiagnosisInputs, MedicineInput } from "./catalog";
 import { nextDoseOf, VACCINES } from "./domain";
 import { PatientLink } from "./parts";
 import { useSession } from "./session";
@@ -98,21 +99,21 @@ function AllergyOverride({ conflicts, confirmed, reason, onConfirmed, onReason, 
 
 /** With `withQueue`, the new person also gets a ticket in today's line in the same step. */
 export function NewPatientDialog({ open, onClose, onCreated, withQueue = false }: { open: boolean; onClose: () => void; onCreated: (record: PatientRecord) => void; withQueue?: boolean }) {
-  const { settings } = useSession();
+  const { settings, stationId } = useSession();
   const { notify } = useToast();
   const submit = useSubmit<{ record: PatientRecord; ticket: string | null }>();
-  const [form, setForm] = useState({ patientName: "", birthYear: "", sex: "", ward: "", phone: "" });
+  const [form, setForm] = useState({ patientName: "", birthYear: "", sex: "", ward: "", phone: "", insuranceNo: "" });
   const [matches, setMatches] = useState<PatientSummary[]>([]);
   const [visit, setVisit] = useState({ reason: "", urgent: false });
   const set = (key: keyof typeof form) => (event: { target: { value: string } }) => setForm(value => ({ ...value, [key]: event.target.value }));
-  const close = () => { setForm({ patientName: "", birthYear: "", sex: "", ward: "", phone: "" }); setVisit({ reason: "", urgent: false }); setMatches([]); submit.reset(); onClose(); };
+  const close = () => { setForm({ patientName: "", birthYear: "", sex: "", ward: "", phone: "", insuranceNo: "" }); setVisit({ reason: "", urgent: false }); setMatches([]); submit.reset(); onClose(); };
   const save = (confirmDuplicate = false) => submit.run(
     async () => {
       if (withQueue && visit.reason.trim().length < 2) throw new ApiError(422, "invalid", { error: "invalid", fields: { reason: "Hãy nhập lý do đến khám." } });
       const record = await createPatient(settings, only({ ...form, birthYear: form.birthYear.trim(), confirmDuplicate }));
       if (!withQueue) return { record, ticket: null as string | null };
       try {
-        const entry = await enqueue(settings, { patientId: record.patientId, reason: visit.reason, priority: visit.urgent ? "urgent" : "normal" });
+        const entry = await enqueue(settings, { patientId: record.patientId, reason: visit.reason, priority: visit.urgent ? "urgent" : "normal", stationId });
         return { record, ticket: entry.ticket };
       } catch {
         return { record, ticket: null }; // the record exists; staff can queue the person from the search box
@@ -138,14 +139,17 @@ export function NewPatientDialog({ open, onClose, onCreated, withQueue = false }
         <SelectField label="Giới tính" required value={form.sex} onChange={set("sex")} options={SEX_OPTIONS} placeholder="Chọn" error={e.sex} />
       </div>
       <TextField label="Xã/phường" required value={form.ward} onChange={set("ward")} error={e.ward} />
-      <TextField label="Số điện thoại" hint="Không bắt buộc" inputMode="tel" value={form.phone} onChange={set("phone")} error={e.phone} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField label="Số điện thoại" hint="Không bắt buộc" inputMode="tel" value={form.phone} onChange={set("phone")} error={e.phone} />
+        <TextField label="Mã thẻ BHYT" hint="Không bắt buộc, 15 ký tự" value={form.insuranceNo} onChange={set("insuranceNo")} error={e.insuranceNo} autoComplete="off" />
+      </div>
       {withQueue && (
         <>
           <TextAreaField label="Lý do đến khám" required rows={2} value={visit.reason} onChange={event => setVisit(value => ({ ...value, reason: event.target.value }))} error={e.reason} hint="Người này sẽ được cấp số thứ tự ngay" />
           <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" className="size-4" checked={visit.urgent} onChange={event => setVisit(value => ({ ...value, urgent: event.target.checked }))} />Ưu tiên khẩn</label>
         </>
       )}
-      <Unplaced errors={e} shown={["patientName", "birthYear", "sex", "ward", "phone", ...(withQueue ? ["reason"] : [])]} />
+      <Unplaced errors={e} shown={["patientName", "birthYear", "sex", "ward", "phone", "insuranceNo", ...(withQueue ? ["reason"] : [])]} />
       {matches.length > 0 && (
         <div className="space-y-2 rounded-lg border border-warn/40 bg-warn/5 p-4">
           <AlertBanner level="warning" title="Có thể đã có hồ sơ này">Đã có người cùng họ tên và năm sinh. Mở hồ sơ cũ thay vì tạo trùng.</AlertBanner>
@@ -206,15 +210,12 @@ export function ExamDialog({ record, queueId, open, onClose, onSaved }: { record
         </div>
         {e.vitals && <p role="alert" className="text-sm text-danger">{e.vitals}</p>}
       </fieldset>
-      <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
-        <TextField label="Mã bệnh" hint="ICD-10" value={form.diagnosisCode} onChange={set("diagnosisCode")} />
-        <TextField label="Chẩn đoán" value={form.diagnosisName} onChange={set("diagnosisName")} error={e.diagnosis} />
-      </div>
+      <DiagnosisInputs code={form.diagnosisCode} name={form.diagnosisName} error={e.diagnosis} onChange={value => setForm(current => ({ ...current, diagnosisCode: value.code, diagnosisName: value.name }))} />
       <TextAreaField label="Ghi chú khám" value={form.notes} onChange={set("notes")} error={e.notes} rows={3} />
       <fieldset className="space-y-2"><legend className="text-sm font-medium text-ink">Thuốc kê</legend>
         {rows.map((row, index) => (
           <div key={index} className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
-            <TextField label="Tên thuốc" value={row.name} onChange={event => setRow(index, { name: event.target.value })} />
+            <MedicineInput value={row.name} dose={row.dose} onChange={value => setRow(index, value)} />
             <TextField label="Liều dùng" value={row.dose} onChange={event => setRow(index, { dose: event.target.value })} />
             <label className="flex items-center gap-2 pb-2 text-sm text-ink"><input type="checkbox" className="size-4" checked={row.ongoing} onChange={event => setRow(index, { ongoing: event.target.checked })} />Dùng lâu dài</label>
             <Button variant="ghost" aria-label={`Xóa thuốc ${index + 1}`} icon={<Trash2 aria-hidden className="size-4" />} onClick={() => setRows(list => list.filter((_, i) => i !== index))} />
@@ -282,10 +283,7 @@ export function ReferralDialog({ record, open, onClose, onSaved }: { record: Pat
         <SelectField label="Mức độ" required value={form.urgency} onChange={set("urgency")} options={URGENCY_OPTIONS} error={e.urgency} />
       </div>
       <TextAreaField label="Lý do chuyển tuyến" required rows={3} value={form.reason} onChange={set("reason")} error={e.reason} />
-      <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
-        <TextField label="Mã bệnh" hint="ICD-10" value={form.diagnosisCode} onChange={set("diagnosisCode")} />
-        <TextField label="Chẩn đoán sơ bộ" value={form.diagnosisName} onChange={set("diagnosisName")} error={e.provisionalDiagnosis} />
-      </div>
+      <DiagnosisInputs nameLabel="Chẩn đoán sơ bộ" code={form.diagnosisCode} name={form.diagnosisName} error={e.provisionalDiagnosis} onChange={value => setForm(current => ({ ...current, diagnosisCode: value.code, diagnosisName: value.name }))} />
       <TextAreaField label="Đã xử trí tại trạm" rows={2} value={form.treatmentGiven} onChange={set("treatmentGiven")} error={e.treatmentGiven} />
       <p className="text-sm text-muted">Phiếu kèm thông tin dị ứng của người bệnh. Bệnh viện chỉ xem hồ sơ qua Junctura khi người bệnh đồng ý.</p>
       <Unplaced errors={e} shown={["toFacility", "urgency", "reason", "provisionalDiagnosis", "treatmentGiven"]} />
@@ -344,11 +342,8 @@ export function ConditionDialog({ record, open, onClose, onSaved }: { record: Pa
   return (
     <FormDialog open={open} title={`Thêm bệnh mạn tính · ${record.patientName}`} onClose={close} submit={submit} submitLabel="Thêm bệnh"
       onSubmit={() => submit.run(() => addCondition(settings, record.patientId, only(form)), saved => { notify("Đã thêm bệnh mạn tính", "ok"); close(); onSaved(saved); })}>
-      <TextField label="Tên bệnh" required value={form.name} onChange={set("name")} error={e.name} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField label="Mã bệnh" hint="ICD-10, không bắt buộc" value={form.code} onChange={set("code")} error={e.code} />
-        <TextField label="Bắt đầu từ" required type="date" value={form.since} onChange={set("since")} error={e.since} />
-      </div>
+      <DiagnosisInputs nameLabel="Tên bệnh" code={form.code} name={form.name} error={e.name} onChange={value => setForm(current => ({ ...current, code: value.code, name: value.name }))} />
+      <TextField label="Bắt đầu từ" required type="date" value={form.since} onChange={set("since")} error={e.since} />
       <Unplaced errors={e} shown={["name", "code", "since"]} />
     </FormDialog>
   );
@@ -372,13 +367,29 @@ export function MedicationDialog({ record, open, onClose, onSaved }: { record: P
         saved => { notify("Đã thêm thuốc", "ok"); close(); onSaved(saved); },
         error => { if (error.code !== "allergy-conflict") return false; setConflicts((error.body.conflicts as AllergyConflict[]) ?? []); return true; },
       )}>
-      <TextField label="Tên thuốc" required value={form.name} onChange={set("name")} error={e.name} />
+      <MedicineInput value={form.name} dose={form.dose} error={e.name} onChange={value => setForm(current => ({ ...current, ...value }))} />
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField label="Liều dùng" required value={form.dose} onChange={set("dose")} error={e.dose} hint="Ví dụ: 5 mg x 1 lần/ngày" />
         <TextField label="Bắt đầu từ" type="date" hint="Để trống là hôm nay" value={form.since} onChange={set("since")} error={e.since} />
       </div>
       <AllergyOverride conflicts={conflicts} confirmed={confirmed} reason={reason} onConfirmed={setConfirmed} onReason={setReason} error={e.overrideReason} />
       <Unplaced errors={e} shown={["name", "dose", "since", "overrideReason"]} />
+    </FormDialog>
+  );
+}
+
+// ---------------------------------------------------------------- insurance card
+
+export function InsuranceDialog({ record, open, onClose, onSaved }: { record: PatientRecord; open: boolean; onClose: () => void; onSaved: (record: PatientRecord) => void }) {
+  const { settings } = useSession();
+  const { notify } = useToast();
+  const submit = useSubmit<PatientRecord>();
+  const [value, setValue] = useState(record.insuranceNo ?? "");
+  const close = () => { submit.reset(); onClose(); };
+  return (
+    <FormDialog open={open} title={`Mã thẻ BHYT · ${record.patientName}`} onClose={close} submit={submit} submitLabel="Lưu"
+      onSubmit={() => submit.run(() => saveInsurance(settings, record.patientId, value), saved => { notify(value.trim() ? "Đã cập nhật mã thẻ BHYT" : "Đã xóa mã thẻ BHYT", "ok"); close(); onSaved(saved); })}>
+      <TextField label="Mã thẻ BHYT" hint="2 chữ cái và 13 chữ số, ví dụ DN4797912345678. Để trống để xóa. Bản demo chỉ lưu mã, không kiểm tra với cơ quan bảo hiểm." value={value} onChange={event => setValue(event.target.value)} error={submit.errors.insuranceNo} autoComplete="off" />
     </FormDialog>
   );
 }

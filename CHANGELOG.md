@@ -20,6 +20,19 @@ All notable changes to Junctura Clinic are recorded here. The format follows
 
 ### Added
 
+- **Reception**: insurance (BHYT) number on the record; automatic priority for children under 6 and people
+  aged 60+; self-service ticket page `/lay-so` (QR for phones) and a waiting-room board `/bang-so` that show
+  ticket numbers only. Public endpoints are rate-limited and answer only when name and birth year match
+  exactly one record.
+- **Referral tracking**: status (issued, received, completed, cancelled) and whether, how often and when the
+  hospital read the referral through Junctura (derived from answered `referral-summary` calls).
+- **Catalogs**: ICD-10 and medicine suggestions in the exam form (short demo lists).
+- **Reports** (station managers, new `report` permission): cases per day, disease groups, ward, age band,
+  vaccinations; counts only; CSV download.
+- **Stations**: several working points per facility, each with its own queue; management page.
+- **Optional AI summary frame**: off by default; needs `AI_SUMMARY_URL/KEY/MODEL`; de-identified prompt;
+  labelled "needs review"; falls back to the template summary on error. New dependency `qrcode` (MIT).
+
 - **"Nhật ký Junctura" tab** (station managers): every capability call other apps made through Junctura, with
   the capability, purpose, emergency mark, the person's record and how it ended (answered, refused and why, no
   record). New `GET /api/junctura-calls` (needs `audit.read`). Calls are recorded as structured audit lines

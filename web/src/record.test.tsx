@@ -23,11 +23,12 @@ const summaries: PatientSummary[] = [
 
 vi.mock("./api", async importOriginal => ({ ...(await importOriginal<typeof import("./api")>()), getPatient: vi.fn(), listPatients: vi.fn(), getQueue: vi.fn(), getAudit: vi.fn(), getJunctureCalls: vi.fn(), addEncounter: vi.fn(), createPatient: vi.fn(), enqueue: vi.fn() }));
 const mocked = { getPatient: vi.mocked(getPatient), listPatients: vi.mocked(listPatients), getQueue: vi.mocked(getQueue), getAudit: vi.mocked(getAudit), getJunctureCalls: vi.mocked(getJunctureCalls), addEncounter: vi.mocked(addEncounter), createPatient: vi.mocked(createPatient), enqueue: vi.mocked(enqueue) };
-const ALL = ["read", "register", "queue", "exam", "vaccinate", "refer", "audit.read", "settings.write"] as const;
+const ALL = ["read", "register", "queue", "exam", "vaccinate", "refer", "audit.read", "report", "settings.write"] as const;
 const sessionFor = (permissions: readonly (typeof ALL)[number][]): SessionValue => ({
   settings: { issuer: "https://id.test", clientId: "c" }, facility: "Trạm test", expire: () => {}, setCrumbs: () => {},
   me: { username: "u", displayName: "Nhân viên", role: "clinic-staff", permissions: [...permissions] }, can: permission => permissions.includes(permission),
-  station: { aiSummary: false }, setStation: () => {},
+  station: { aiSummary: false, aiModel: false, aiConfigured: false }, setStation: () => {},
+  stations: [{ id: "main", name: "Trạm test" }], stationId: "main", setStations: () => {}, setStationId: () => {},
 });
 const wrap = (node: React.ReactNode, permissions: readonly (typeof ALL)[number][] = ALL) => render(<ToastProvider><SessionProvider value={sessionFor(permissions)}>{node}</SessionProvider></ToastProvider>);
 
@@ -86,7 +87,7 @@ describe("working the record", () => {
 
 describe("reception, audit and settings", () => {
   it("lists the queue in order with a call button", async () => {
-    mocked.getQueue.mockResolvedValue([{ id: 1, ticket: "001", patientId: "P0001", patientName: "Nguyễn Văn An", birthYear: 1980, sex: "male", reason: "Sốt", priority: "normal", state: "waiting", since: "2026-11-11T01:00:00Z", calledAt: null, doneAt: null, severeAllergy: false, allergyState: "not-recorded" }]);
+    mocked.getQueue.mockResolvedValue([{ id: 1, ticket: "001", patientId: "P0001", patientName: "Nguyễn Văn An", birthYear: 1980, sex: "male", reason: "Sốt", priority: "normal", state: "waiting", since: "2026-11-11T01:00:00Z", calledAt: null, doneAt: null, severeAllergy: false, allergyState: "not-recorded", group: null, station: "main" }]);
     wrap(<Reception />);
     expect(await screen.findByText("Nguyễn Văn An")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Gọi khám/ })).toBeTruthy();
@@ -103,7 +104,7 @@ describe("reception, audit and settings", () => {
     await userEvent.type(screen.getByLabelText(/Xã\/phường/), "Hòa Khánh");
     await userEvent.type(within(document.querySelector("dialog")!).getByLabelText(/Lý do đến khám/), "Sốt");
     await userEvent.click(screen.getByRole("button", { name: "Thêm và lấy số" }));
-    await waitFor(() => expect(mocked.enqueue).toHaveBeenCalledWith(expect.anything(), { patientId: "P0009", reason: "Sốt", priority: "normal" }));
+    await waitFor(() => expect(mocked.enqueue).toHaveBeenCalledWith(expect.anything(), { patientId: "P0009", reason: "Sốt", priority: "normal", stationId: "main" }));
   });
   it("refuses the audit page without audit.read", async () => {
     wrap(<Audit />, ["read"]);
@@ -135,6 +136,6 @@ describe("reception, audit and settings", () => {
   });
   it("locks the AI summary switch for roles without settings.write", () => {
     wrap(<Settings />, ["read"]);
-    expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true);
+    for (const box of screen.getAllByRole("checkbox")) expect((box as HTMLInputElement).disabled).toBe(true);
   });
 });
