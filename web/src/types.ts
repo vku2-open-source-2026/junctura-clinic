@@ -5,7 +5,7 @@ import type { AllergyState } from "@junctura/health-ui";
 export type Severity = "mild" | "moderate" | "severe";
 
 export interface PublicConfig { issuer: string; clientId: string; facility: string }
-export type Permission = "read" | "register" | "queue" | "exam" | "vaccinate" | "refer" | "audit.read" | "settings.write";
+export type Permission = "read" | "register" | "queue" | "exam" | "vaccinate" | "refer" | "audit.read" | "report" | "settings.write";
 export interface Me { username: string; displayName: string; role: string; permissions: Permission[] }
 
 export interface PatientSummary {
@@ -18,7 +18,9 @@ export interface VaccineDue { vaccine: string; code: string; nextDose: number; d
 export interface Referral {
   referralId: string; issuedAt: string; toFacility: string; urgency: "routine" | "urgent" | "emergency"; reason: string;
   provisionalDiagnosis?: Diagnosis; treatmentGiven?: string;
+  status: ReferralStatus; viewCount?: number; viewedAt?: string;
 }
+export type ReferralStatus = "issued" | "received" | "cancelled";
 
 export interface Vitals { temperatureC?: number; pulse?: number; systolic?: number; diastolic?: number; spo2?: number; weightKg?: number }
 export interface Prescription { name: string; dose: string; ongoing?: boolean }
@@ -26,7 +28,7 @@ export interface Encounter { date: string; reason: string; diagnosis?: Diagnosis
 
 export interface PatientRecord {
   patientId: string; patientName: string; birthYear: number; sex: "male" | "female"; ward: string;
-  phone?: string;
+  phone?: string; insuranceNo?: string;
   allergyState: "recorded" | "none-known" | "not-recorded";
   allergies: { substance: string; severity: Severity; reaction: string }[];
   chronicConditions: { id: number; code?: string; name: string; since: string }[];
@@ -53,9 +55,23 @@ export type QueueState = "waiting" | "called" | "done" | "cancelled";
 export interface QueueEntry {
   id: number; ticket: string; patientId: string; patientName: string; birthYear: number; sex: "male" | "female"; reason: string;
   priority: "normal" | "urgent"; state: QueueState; since: string; calledAt: string | null; doneAt: string | null;
-  severeAllergy: boolean; allergyState: "recorded" | "none-known" | "not-recorded";
+  severeAllergy: boolean; allergyState: "recorded" | "none-known" | "not-recorded"; group: "child" | "senior" | null; station: string;
 }
 export interface AuditEntry { id: number; at: string; username: string; displayName: string; action: string; patientId?: string; patientName?: string; detail?: string }
 export interface JunctureCall { id: number; at: string; capability?: string; purpose?: string; emergency: boolean; outcome?: string; patientId?: string; patientName?: string }
-export interface StationSettings { aiSummary: boolean }
+export interface StationSettings { aiSummary: boolean; aiModel: boolean; aiConfigured: boolean }
+export interface Station { id: string; name: string }
+export interface CatalogItem { code?: string; name: string; dose?: string; group?: string }
+export interface Report {
+  from: string; to: string;
+  totals: { encounters: number; vaccinations: number; referrals: number; queue: number; patients: number };
+  daily: { date: string; encounters: number; vaccinations: number; referrals: number; queue: number }[];
+  diagnoses: { code: string; name: string; count: number }[];
+  wards: { ward: string; encounters: number; patients: number }[];
+  ages: { band: string; count: number }[];
+  vaccines: { vaccine: string; doses: number; patients: number }[];
+}
+export type ReportKind = "daily" | "diagnoses" | "wards" | "ages" | "vaccines";
+export interface SelfTicket { ticket: string; state: QueueState; ahead: number; station: string; already: boolean }
+export interface Board { today: string; station: string | null; calling: string[]; waiting: { ticket: string; priority: "urgent" | "group" | "normal" }[]; waitingCount: number }
 export interface AllergyConflict { medicine: string; allergen: string; severity: Severity }

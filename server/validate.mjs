@@ -73,6 +73,18 @@ export const decimal = (label, min, max) => value => {
   return number;
 };
 
+/** Text that must match a pattern after the given clean-up (for example upper-casing); optional. */
+export const pattern = (label, regex, hint, { required = false, normalize = value => value } = {}) => value => {
+  if (empty(value)) {
+    if (required) throw new RangeError(`${label} không được để trống.`);
+    return undefined;
+  }
+  if (typeof value !== "string") throw new RangeError(`${label} phải là chữ.`);
+  const result = normalize(clean(value));
+  if (!regex.test(result)) throw new RangeError(`${label} không đúng định dạng (${hint}).`);
+  return result;
+};
+
 export const bool = value => value === true;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

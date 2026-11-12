@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { extname, join, normalize, sep } from "node:path";
+import { searchCatalog } from "./catalog.mjs";
 import { DomainError } from "./data.mjs";
 import { AuthError } from "./jwt.mjs";
+import { REPORT_KINDS, buildReport, reportCsv } from "./reports.mjs";
 import { can, knownRole } from "./roles.mjs";
-import { ValidationError, bool, check, date, decimal, integer, list, object, oneOf, text } from "./validate.mjs";
+import { ValidationError, bool, check, date, decimal, integer, list, object, oneOf, pattern, text } from "./validate.mjs";
 
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -45,11 +47,11 @@ const needReason = input => {
  * built web UI. Staff are the accounts of this application; every other signed-in person is
  * refused. What each role may do is in roles.mjs, and every write is recorded in the audit log.
  */
-export function createApp({ config, data, verifier }) {
+export function createApp({ config, data, verifier, summarizer }) {
   const base = securityHeaders(config);
 
   const send = (res, status, body, headers = {}) => {
-    const payload = body === undefined ? "" : JSON.stringify(body);
+    const payload = body === undefined ? "" : typeof body === "string" ? body : JSON.stringify(body);
     res.writeHead(status, { ...base, "cache-control": "no-store", ...(payload && { "content-type": "application/json; charset=utf-8" }), ...headers });
     res.end(payload);
   };
@@ -89,6 +91,7 @@ export function createApp({ config, data, verifier }) {
     sex: oneOf("giới tính", ["male", "female"]),
     ward: text("Xã/phường", { min: 1, max: 60 }),
     phone: v => text("Số điện thoại", { min: 8, max: 15, required: false })(typeof v === "string" ? v.replace(/[\s.-]/g, "") : v),
+    insuranceNo: pattern("Mã thẻ BHYT", /^[A-Z]{2}\d{13}$/, "2 chữ cái và 13 chữ số, ví dụ DN4797912345678", { normalize: value => value.replace(/\s+/g, "").toUpperCase() }),
     confirmDuplicate: bool,
   };
   const encounterRules = () => ({
@@ -118,14 +121,32 @@ export function createApp({ config, data, verifier }) {
     let match;
 
     if (reading) {
-      if (path === "/api/me") return [200, { ...user, permissions: ["read", "register", "queue", "exam", "vaccinate", "refer", "audit.read", "settings.write"].filter(item => can(user.role, item)) }];
+      if (path === "/api/me") return [200, { ...user, permissions: ["read", "register", "queue", "exam", "vaccinate", "refer", "audit.read", "report", "settings.write"].filter(item => can(user.role, item)) }];
       need(user, "read");
       if (path === "/api/patients") return [200, { patients: data.list(url.searchParams.get("q") ?? "") }];
       if (path === "/api/overview") return [200, data.overview()];
       if (path === "/api/vaccinations") return [200, { today: data.today, due: data.vaccinesDue() }];
       if (path === "/api/referrals") return [200, { referrals: data.referrals() }];
-      if (path === "/api/queue") return [200, { today: data.today, queue: data.queueToday() }];
-      if (path === "/api/settings") return [200, data.settings()];
+      if (path === "/api/queue") return [200, { today: data.today, queue: data.queueToday(url.searchParams.get("station") || undefined) }];
+      if (path === "/api/stations") return [200, { stations: data.stations() }];
+      if (path === "/api/settings") return [200, { ...data.settings(), aiConfigured: Boolean(summarizer) }];
+      if ((match = /^\/api\/catalog\/([a-z0-9]+)$/.exec(path))) {
+        const items = searchCatalog(match[1], url.searchParams.get("q") ?? "", url.searchParams.get("limit") ?? 8);
+        if (!items) throw new DomainError("unknown-catalog", 404);
+        return [200, { items }];
+      }
+      if (path === "/api/reports" || path === "/api/reports.csv") {
+        need(user, "report");
+        const to = url.searchParams.get("to") || today();
+        const from = url.searchParams.get("from") || new Date(Date.parse(`${to}T00:00:00Z`) - 29 * 86_400_000).toISOString().slice(0, 10);
+        let report;
+        try { report = buildReport(data.db, { from, to, today: today() }); } catch (error) { if (error instanceof RangeError) throw new DomainError(error.message, 422); throw error; }
+        if (path === "/api/reports") return [200, report];
+        const kind = url.searchParams.get("kind") ?? "daily";
+        if (!Object.hasOwn(REPORT_KINDS, kind)) throw new DomainError("unknown-report-kind", 422);
+        data.log(user, "report.export", null, `${kind} ${from}..${to}`);
+        return [200, reportCsv(report, kind), { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="bao-cao-${REPORT_KINDS[kind]}-${from}-${to}.csv"` }];
+      }
       if (path === "/api/audit") {
         need(user, "audit.read");
         return [200, { entries: data.audit({ limit: url.searchParams.get("limit") ?? 100, patientId: url.searchParams.get("patient") || undefined, calls: false }) }];
@@ -135,9 +156,21 @@ export function createApp({ config, data, verifier }) {
         return [200, { calls: data.audit({ limit: url.searchParams.get("limit") ?? 100, calls: true }).map(callOf) }];
       }
       if ((match = /^\/api\/patients\/([A-Za-z0-9-]{1,32})\/summary$/.exec(path))) {
-        if (!data.settings().aiSummary) throw new DomainError("summary-disabled", 409);
+        const station = data.settings();
+        if (!station.aiSummary) throw new DomainError("summary-disabled", 409);
         const lines = data.summaryOf(match[1]);
         if (!lines) throw new DomainError("patient-not-found", 404);
+        if (station.aiModel && summarizer) {
+          try {
+            const modelLines = await summarizer(data.get(match[1]), data.today);
+            data.log(user, "summary.view", match[1], "Tóm tắt bằng mô hình AI (đã ẩn danh)");
+            return [200, { kind: "ai", lines: modelLines }];
+          } catch (error) {
+            console.error(`AI summary failed: ${error.message}`);
+            data.log(user, "summary.view", match[1], "Mô hình AI không trả lời, dùng tóm tắt theo mẫu");
+            return [200, { kind: "template", lines, notice: "ai-unavailable" }];
+          }
+        }
         data.log(user, "summary.view", match[1], "Tóm tắt tự động");
         return [200, { kind: "template", lines }];
       }
@@ -160,7 +193,7 @@ export function createApp({ config, data, verifier }) {
     }
     if (path === "/api/queue") {
       need(user, "queue");
-      const input = check(body, { patientId: text("Người bệnh", { max: 32 }), reason: text("Lý do đến khám", { min: 2, max: 200 }), priority: oneOf("mức ưu tiên", ["normal", "urgent"], { required: false }) });
+      const input = check(body, { patientId: text("Người bệnh", { max: 32 }), reason: text("Lý do đến khám", { min: 2, max: 200 }), priority: oneOf("mức ưu tiên", ["normal", "urgent"], { required: false }), stationId: text("Điểm khám", { max: 32, required: false }) });
       return [201, data.enqueue(input, user)];
     }
     if ((match = /^\/api\/queue\/(\d+)\/(call|done|cancel)$/.exec(path))) {
@@ -170,7 +203,26 @@ export function createApp({ config, data, verifier }) {
     }
     if (path === "/api/settings") {
       need(user, "settings.write");
-      return [200, data.updateSettings(check(body, { aiSummary: v => (v === undefined ? undefined : bool(v)) }), user)];
+      const input = check(body, { aiSummary: v => (v === undefined ? undefined : bool(v)), aiModel: v => (v === undefined ? undefined : bool(v)) });
+      if (input.aiModel && !summarizer) throw new DomainError("ai-not-configured", 409);
+      return [200, { ...data.updateSettings(input, user), aiConfigured: Boolean(summarizer) }];
+    }
+    if (path === "/api/stations") {
+      if (method !== "POST") return [405, { error: "method-not-allowed" }];
+      need(user, "settings.write");
+      return [201, { stations: data.addStation(check(body, { name: text("Tên điểm khám", { min: 2, max: 80 }) }).name, user) }];
+    }
+    if ((match = /^\/api\/stations\/([a-z0-9-]{1,32})$/.exec(path)) && method === "PUT") {
+      need(user, "settings.write");
+      return [200, { stations: data.renameStation(match[1], check(body, { name: text("Tên điểm khám", { min: 2, max: 80 }) }).name, user) }];
+    }
+    if ((match = /^\/api\/patients\/([A-Za-z0-9-]{1,32})\/insurance$/.exec(path)) && method === "PUT") {
+      need(user, "register");
+      return [200, data.setInsurance(match[1], check(body, { insuranceNo: patientRules.insuranceNo }).insuranceNo, user)];
+    }
+    if ((match = /^\/api\/patients\/([A-Za-z0-9-]{1,32})\/referrals\/([A-Za-z0-9-]{1,40})\/status$/.exec(path)) && method === "PUT") {
+      need(user, "refer");
+      return [200, data.setReferralStatus(match[1], match[2], check(body, { status: oneOf("trạng thái", ["issued", "received", "cancelled"]) }).status, user)];
     }
 
     if ((match = /^\/api\/patients\/([A-Za-z0-9-]{1,32})\/(allergies|conditions|medications|encounters|vaccinations|referrals)$/.exec(path))) {
@@ -216,7 +268,55 @@ export function createApp({ config, data, verifier }) {
     return undefined;
   }
 
+  /** Answers a validation or domain rule as its HTTP error; false when the error is something else. */
+  function answerFailure(res, error) {
+    if (error instanceof ValidationError) return send(res, 422, { error: "invalid", fields: error.fields }), true;
+    if (error instanceof DomainError) {
+      const { fields, ...extra } = error.extra;
+      return send(res, error.status, { error: error.code, ...(fields && { fields }), ...extra }), true;
+    }
+    return false;
+  }
+
+  // Self service for people at the station: no sign-in, and nothing that identifies a person comes back, only a ticket number.
+  const attempts = new Map();
+  const tooMany = (req, now = Date.now()) => {
+    const who = req.socket.remoteAddress ?? "?";
+    const recent = (attempts.get(who) ?? []).filter(at => now - at < 600_000);
+    recent.push(now);
+    attempts.set(who, recent);
+    if (attempts.size > 5000) for (const [key, list] of attempts) if (!list.some(at => now - at < 600_000)) attempts.delete(key);
+    return recent.length > 8;
+  };
+  async function publicRoute(req, url) {
+    const path = url.pathname;
+    const station = url.searchParams.get("station") || "main";
+    if (path === "/api/public/info" && req.method === "GET") return [200, { facility: data.facility, today: data.today, stations: data.stations() }];
+    if (path === "/api/public/board" && req.method === "GET") {
+      if (!data.stations().some(item => item.id === station)) throw new DomainError("station-not-found", 404);
+      return [200, data.board(station)];
+    }
+    if (path === "/api/public/ticket" && req.method === "POST") {
+      if (tooMany(req)) throw new DomainError("too-many-requests", 429);
+      const input = check(await readBody(req), {
+        patientName: text("Họ tên", { min: 2, max: 80 }), birthYear: patientRules.birthYear,
+        reason: text("Lý do đến khám", { min: 2, max: 200, required: false }), stationId: text("Điểm khám", { max: 32, required: false }),
+      });
+      return [200, data.selfTicket({ ...input, reason: input.reason ?? "Tự lấy số tại trạm" })];
+    }
+    return undefined;
+  }
+
   async function api(req, res, url) {
+    if (url.pathname.startsWith("/api/public/")) {
+      try {
+        const result = await publicRoute(req, url);
+        return result ? send(res, result[0], result[1]) : send(res, 404, { error: "not-found" });
+      } catch (error) {
+        if (answerFailure(res, error)) return;
+        throw error;
+      }
+    }
     if (url.pathname === "/api/config") {
       if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, { error: "method-not-allowed" }, { allow: "GET, HEAD" });
       return send(res, 200, { issuer: config.issuer, clientId: config.webClientId, facility: data.facility });
@@ -231,13 +331,9 @@ export function createApp({ config, data, verifier }) {
     if (!user) return send(res, 403, { error: "not-clinic-staff" });
     try {
       const result = await route(req, url, user);
-      return result ? send(res, result[0], result[1]) : send(res, 404, { error: "not-found" });
+      return result ? send(res, result[0], result[1], result[2]) : send(res, 404, { error: "not-found" });
     } catch (error) {
-      if (error instanceof ValidationError) return send(res, 422, { error: "invalid", fields: error.fields });
-      if (error instanceof DomainError) {
-        const { fields, ...extra } = error.extra;
-        return send(res, error.status, { error: error.code, ...(fields && { fields }), ...extra });
-      }
+      if (answerFailure(res, error)) return;
       throw error;
     }
   }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { aiConfig } from "./ai.mjs";
 import { parseEnv } from "./env.mjs";
 
 const DEFAULT_PORT = 5181;
@@ -35,6 +36,8 @@ export function loadConfig({ env = process.env, cwd = process.cwd() } = {}) {
   if (!Number.isInteger(providerPort) || providerPort < 0 || providerPort > 65535) throw new RangeError("PROVIDER_PORT must be a valid port number");
   if (Boolean(certFile) !== Boolean(keyFile)) throw new Error("PROVIDER_TLS_CERT and PROVIDER_TLS_KEY must be set together.");
   return Object.freeze({
+    /** Optional model endpoint for summaries (see ai.mjs); null when not configured. */
+    ai: aiConfig({ AI_SUMMARY_URL: get("AI_SUMMARY_URL"), AI_SUMMARY_KEY: get("AI_SUMMARY_KEY"), AI_SUMMARY_MODEL: get("AI_SUMMARY_MODEL") }),
     /** What Clinic needs to answer Junctura's capability calls; null when any part is missing (the app still runs without it). */
     junctura: baseUrl && clientId && clientSecret ? Object.freeze({ baseUrl, clientId, clientSecret }) : null,
     provider: certFile ? Object.freeze({ port: providerPort, host: get("PROVIDER_BIND") ?? "127.0.0.1", certFile: resolve(cwd, certFile), keyFile: resolve(cwd, keyFile) }) : null,

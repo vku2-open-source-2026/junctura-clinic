@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ApiError, getPatient, getReferrals, getVaccinations } from "./api";
 import { VaccinateDialog } from "./Forms";
 import { formatDate } from "./format";
-import { PatientLink, UrgencyBadge } from "./parts";
+import { PatientLink, ReferralProgress, UrgencyBadge } from "./parts";
 import { Link, navigate } from "./router";
 import { Remote, useRemote, useSession } from "./session";
 import type { DueItem, PatientRecord, ReferralRow } from "./types";
@@ -69,6 +69,7 @@ export function Referrals() {
               { key: "urgency", header: "Mức khẩn", render: row => <UrgencyBadge urgency={row.urgency} /> },
               { key: "issuedAt", header: "Ngày lập", sortValue: row => row.issuedAt, render: row => formatDate(row.issuedAt) },
               { key: "reason", header: "Lý do" },
+              { key: "progress", header: "Tiến triển", render: row => <ReferralProgress referral={row} /> },
               { key: "slip", header: "Phiếu", render: row => <Link to={`/phieu-chuyen-tuyen/${encodeURIComponent(row.patientId)}/${encodeURIComponent(row.referralId)}`} className="font-medium text-brand underline-offset-2 hover:underline">Xem và in</Link> },
             ]} />
         )}

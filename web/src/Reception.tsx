@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
 import { Button, EmptyState, PageHeader, QueueList, Section, StatStrip, TextAreaField, TextField, WorkspaceLayout, useToast } from "@junctura/health-ui";
-import { Clock, DoorOpen, UserPlus } from "lucide-react";
+import { Clock, DoorOpen, QrCode, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ApiError, enqueue, getQueue, listPatients, moveQueue } from "./api";
 import { NewPatientDialog } from "./Forms";
@@ -13,7 +13,7 @@ import type { PatientSummary, QueueEntry } from "./types";
 
 /** Find a person and put them in today's line. */
 function AddToQueue({ picked, onPicked, onAdded }: { picked: PatientSummary | null; onPicked: (patient: PatientSummary | null) => void; onAdded: () => void }) {
-  const { settings, can, expire } = useSession();
+  const { settings, can, expire, stationId } = useSession();
   const { notify } = useToast();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PatientSummary[]>([]);
@@ -36,7 +36,7 @@ function AddToQueue({ picked, onPicked, onAdded }: { picked: PatientSummary | nu
     setSaving(true);
     setError(null);
     try {
-      const entry = await enqueue(settings, { patientId: picked.patientId, reason, priority: urgent ? "urgent" : "normal" });
+      const entry = await enqueue(settings, { patientId: picked.patientId, reason, priority: urgent ? "urgent" : "normal", stationId });
       notify(`Đã thêm ${picked.patientName}, số ${entry.ticket}`, "ok");
       onPicked(null); setQuery(""); setReason(""); setUrgent(false);
       onAdded();
@@ -85,9 +85,9 @@ function AddToQueue({ picked, onPicked, onAdded }: { picked: PatientSummary | nu
 }
 
 export function Reception() {
-  const { settings, can, expire } = useSession();
+  const { settings, can, expire, stationId, stations } = useSession();
   const { notify } = useToast();
-  const { state, reload } = useRemote(signal => getQueue(settings, signal), [settings]);
+  const { state, reload } = useRemote(signal => getQueue(settings, stationId, signal), [settings, stationId]);
   const [picked, setPicked] = useState<PatientSummary | null>(null);
   const [creating, setCreating] = useState(false);
 
@@ -112,8 +112,11 @@ export function Reception() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Hàng chờ khám" description="Tiếp đón người đến trạm, xếp số thứ tự và gọi khám. Gọi khám sẽ mở hồ sơ; lưu lượt khám là xong số."
-        actions={can("register") ? <Button icon={<UserPlus aria-hidden className="size-4" />} onClick={() => setCreating(true)}>Người mới đến, lấy số</Button> : undefined} />
+      <PageHeader title="Hàng chờ khám" description={`Tiếp đón người đến${stations.length > 1 ? ` ${stations.find(item => item.id === stationId)?.name ?? "điểm khám"}` : " trạm"}, xếp số thứ tự và gọi khám. Ca khẩn, trẻ dưới 6 tuổi và người từ 60 tuổi được gọi trước. Lưu lượt khám là xong số.`}
+        actions={<>
+          <Button variant="secondary" icon={<QrCode aria-hidden className="size-4" />} onClick={() => navigate("/reception/qr")}>Mã QR và bảng số</Button>
+          {can("register") && <Button icon={<UserPlus aria-hidden className="size-4" />} onClick={() => setCreating(true)}>Người mới đến, lấy số</Button>}
+        </>} />
       <Remote state={state} reload={reload}>
         {queue => {
           const waiting = queue.filter(entry => entry.state === "waiting");

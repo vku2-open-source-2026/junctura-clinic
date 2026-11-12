@@ -3,12 +3,14 @@
 import { createContext, useContext, useEffect, useState, type DependencyList, type ReactNode } from "react";
 import { ApiError } from "./api";
 import type { OidcSettings } from "./auth";
-import type { Me, Permission, StationSettings } from "./types";
+import type { Me, Permission, Station, StationSettings } from "./types";
 import { EmptyState, ErrorState, Skeleton } from "@junctura/health-ui";
 
 export interface SessionValue {
   settings: OidcSettings; facility: string; expire: () => void; setCrumbs: (crumbs: string[]) => void;
   me: Me; can: (permission: Permission) => boolean; station: StationSettings; setStation: (value: StationSettings) => void;
+  /** Working points of this commune (the first one is the main station) and the one this browser works at. */
+  stations: Station[]; stationId: string; setStations: (value: Station[]) => void; setStationId: (id: string) => void;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
