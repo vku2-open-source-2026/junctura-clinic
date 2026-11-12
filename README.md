@@ -177,9 +177,19 @@ npm run build         # build giao diện vào web/dist
 npm start             # chạy máy chủ
 ```
 
+Hoặc dùng bản phát hành: tải `junctura-clinic-0.1.0.tar.gz` và `junctura-clinic-0.1.0.tar.gz.sha256` từ [Releases](https://github.com/vku2-open-source-2026/junctura-clinic/releases), kiểm tra bằng `sha256sum -c junctura-clinic-0.1.0.tar.gz.sha256`, giải nén (`tar -xzf junctura-clinic-0.1.0.tar.gz`), vào thư mục `junctura-clinic-0.1.0` rồi chạy các lệnh trên từ `npm ci`.
+
 Mở <http://localhost:5181> và đăng nhập bằng `ysi.tramyte`. Mật khẩu demo nằm trong `.junctura/demo/accounts.env` của junctura-health.
 
 **Lấy số bằng điện thoại.** Đặt `HOST=0.0.0.0`, mở Clinic bằng địa chỉ mạng nội bộ của máy (ví dụ `http://192.168.1.10:5181`), vào **Hàng chờ → QR** rồi quét. Mã QR dùng đúng địa chỉ đang mở.
+
+**Chạy bằng Docker.** Cần Docker, Junctura DX-OS đang chạy ở máy bạn (`npm run local:up`) và junctura-health đã chạy `demo:setup`:
+
+```sh
+docker compose up --build
+```
+
+Mở <http://localhost:5181>. Compose dựng ảnh từ [`Dockerfile`](Dockerfile) (build nhiều giai đoạn, chạy bằng người dùng không phải root), gắn thư mục junctura-health ở chế độ chỉ đọc và lưu cơ sở dữ liệu trong volume `clinic-data`. Nếu junctura-health nằm ở nơi khác, đặt `JUNCTURA_HEALTH_DIR` trước khi chạy. Phần cung cấp năng lực (cần chứng chỉ TLS) chưa bật trong cấu hình này; dùng `npm start` nếu bạn cần để Hospital, Pharmacy gọi Clinic.
 
 **Phát triển giao diện.** Chạy `npm run dev:server` (API, cổng 5191) và `npm run dev` (giao diện, cổng 5181, tự chuyển `/api` sang 5191).
 
@@ -203,6 +213,7 @@ Máy chủ đọc kết nối từ `.junctura/demo/junctura-clinic.env` do `demo
 | `JUNCTURA_HEALTH_DIR` | Vị trí repo junctura-health | `../junctura-health` |
 | `CLINIC_DB` | File SQLite; xóa file để nạp lại dữ liệu mẫu | `data/clinic.db` |
 | `PORT`, `HOST` | Địa chỉ lắng nghe của giao diện và API | `5181`, `127.0.0.1` |
+| `JUNCTURA_ISSUER_INTERNAL` | Địa chỉ dùng để lấy khóa xác thực khi địa chỉ công khai của Junctura không truy cập được từ nơi chạy Clinic (ví dụ trong container). Token vẫn được kiểm tra theo địa chỉ công khai | bằng `JUNCTURA_ISSUER` |
 | `PROVIDER_TLS_CERT`, `PROVIDER_TLS_KEY` | Chứng chỉ và khóa (tạo bằng `npm run provider:pki -- clinic` trong junctura-dxos) để Junctura gọi Clinic qua HTTPS; thiếu thì không cung cấp năng lực | không có |
 | `PROVIDER_PORT`, `PROVIDER_BIND` | Cổng và địa chỉ của phần cung cấp năng lực | `8443`, `127.0.0.1` |
 | `AI_SUMMARY_URL`, `AI_SUMMARY_KEY`, `AI_SUMMARY_MODEL` | Dịch vụ tóm tắt AI (chat completions tương thích OpenAI). Thiếu thì tính năng không bật được | không có |
@@ -249,9 +260,9 @@ Giao diện nhân viên cần đăng nhập; hai trang công khai không cần.
 | Lưu trữ | SQLite qua `node:sqlite` (có sẵn trong Node, không thêm thư viện) |
 | Giao diện | React 19, Vite, TypeScript, [`@junctura/health-ui`](https://www.npmjs.com/package/@junctura/health-ui), `qrcode` (MIT) |
 | Dữ liệu mẫu | 50 người bệnh giả lập ở Đà Nẵng từ junctura-health, nạp một lần đầu, ngày tháng dời để ngày demo là hôm nay |
-| Đóng gói, CI | npm, GitHub Actions |
+| Đóng gói, CI | npm, Docker, GitHub Actions |
 
-Thư viện bên thứ ba được khai trong `package.json` và `package-lock.json`, cài từ registry; không chép mã nguồn của chúng vào repo.
+Thư viện bên thứ ba được khai trong `package.json` và `package-lock.json`, cài từ registry; không chép mã nguồn của chúng vào repo. Phiên bản và giấy phép: [THIRD-PARTY.md](THIRD-PARTY.md).
 
 ## Tài liệu
 
@@ -259,6 +270,9 @@ Thư viện bên thứ ba được khai trong `package.json` và `package-lock.j
 | --- | --- |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Quy trình đóng góp, quy tắc bắt buộc |
 | [CHANGELOG.md](CHANGELOG.md) | Lịch sử thay đổi |
+| [SECURITY.md](SECURITY.md) | Cách báo lỗ hổng bảo mật |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Quy tắc ứng xử |
+| [THIRD-PARTY.md](THIRD-PARTY.md) | Thư viện bên thứ ba, giấy phép, dịch vụ ngoài tùy chọn |
 | [`.env.example`](.env.example) | Mẫu biến môi trường |
 | [Tính năng từng ứng dụng](https://github.com/vku2-open-source-2026/junctura-health/blob/main/docs/APPS.md) | Phạm vi Clinic và ranh giới phần AI |
 | [Hợp đồng năng lực](https://github.com/vku2-open-source-2026/junctura-health/tree/main/contracts) | Dữ liệu vào, ra, mục đích được phép |
@@ -273,6 +287,8 @@ web/            giao diện React (web/src)
 tests/          kiểm thử máy chủ
 scripts/        kiểm tra cú pháp và REUSE
 docs/assets/    logo
+Dockerfile      ảnh container (build nhiều giai đoạn)
+compose.yaml    chạy Clinic bằng Docker
 ```
 
 ## Kiểm thử
@@ -293,14 +309,15 @@ GitHub Actions chạy cả bốn lệnh ở mỗi Pull Request.
 - [x] Tiếp đón: BHYT, ưu tiên tự động, lấy số bằng QR, màn hình chờ, nhiều điểm khám.
 - [x] Theo dõi chuyển tuyến, danh mục ICD-10 và thuốc, báo cáo CSV.
 - [x] Khung tóm tắt AI tùy chọn (tắt mặc định).
-- [ ] Chạy trong Docker cùng cả hệ thống.
+- [x] Đóng gói Docker cho Clinic (`compose.yaml`).
+- [ ] Chạy cả bộ năm ứng dụng bằng một lệnh `docker compose`.
 - [ ] Bản phát hành `v0.1.0` kèm gói `.tar.gz`.
 
 Lịch nhắc tiêm theo bộ lịch mẫu của demo, không phải hướng dẫn chuyên môn. Tiến độ chi tiết ở [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues).
 
 ## Đóng góp
 
-Mọi đóng góp đều được hoan nghênh. Báo lỗi và đề xuất tại [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues); trước khi gửi Pull Request, đọc [CONTRIBUTING.md](CONTRIBUTING.md). Commit theo chuẩn Conventional Commits và không bao giờ commit tệp `.env` hay khóa bí mật. Lịch sử thay đổi: [CHANGELOG.md](CHANGELOG.md).
+Mọi đóng góp đều được hoan nghênh. Báo lỗi và đề xuất tại [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues); lỗ hổng bảo mật báo theo [SECURITY.md](SECURITY.md). Trước khi gửi Pull Request, đọc [CONTRIBUTING.md](CONTRIBUTING.md) và [Quy tắc ứng xử](CODE_OF_CONDUCT.md). Commit theo chuẩn Conventional Commits và không bao giờ commit tệp `.env` hay khóa bí mật. Lịch sử thay đổi: [CHANGELOG.md](CHANGELOG.md).
 
 ## Giấy phép
 
@@ -310,4 +327,4 @@ Junctura Clinic là phần mềm tự do, phát hành theo [Apache License 2.0](
 - Mỗi tệp mã nguồn đều ghi giấy phép bằng tiêu đề [SPDX](https://spdx.dev/) (`SPDX-License-Identifier: Apache-2.0`); các tệp không chứa được chú thích (JSON, dữ liệu) được khai báo trong [REUSE.toml](REUSE.toml). Dự án tuân thủ chuẩn [REUSE 3.3](https://reuse.software/), kiểm tra bằng `reuse lint`.
 <!-- REUSE-IgnoreEnd -->
 - Toàn văn giấy phép: [LICENSE](LICENSE) · thông báo bản quyền: [NOTICE](NOTICE).
-- Thành phần bên thứ ba giữ giấy phép riêng và đều là giấy phép nguồn mở; chúng được khai trong `package.json`, cài từ registry, không chép hay sửa mã nguồn.
+- Thành phần bên thứ ba giữ giấy phép riêng và đều là giấy phép nguồn mở; chúng được khai trong `package.json`, cài từ registry, không chép hay sửa mã nguồn. Danh sách, phiên bản và giấy phép tại [THIRD-PARTY.md](THIRD-PARTY.md). Dịch vụ AI bên ngoài (tùy chọn, tắt mặc định) không thuộc phạm vi giấy phép này.

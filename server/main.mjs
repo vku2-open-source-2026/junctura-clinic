@@ -25,7 +25,7 @@ const data = await loadClinicData({ healthDir: config.healthDir, file: config.db
 });
 const portFlag = process.argv.indexOf("--port");
 if (portFlag !== -1) config = Object.freeze({ ...config, port: Number(process.argv[portFlag + 1]) });
-const verifier = createVerifier({ issuer: config.issuer, clientId: config.webClientId });
+const verifier = createVerifier({ issuer: config.issuer, keysBase: config.issuerInternal, clientId: config.webClientId });
 
 const server = createServer(createApp({ config, data, verifier, summarizer: config.ai ? createSummarizer(config.ai) : undefined }));
 server.listen(config.port, config.host, () => {

@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Junctura Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Runs Junctura Clinic in a container next to a Junctura DX-OS that is already running on this machine
+# (junctura-dxos: `npm run local:up`) and a junctura-health checkout that has run `npm run demo:setup`.
+#
+#   docker compose up --build
+#
+# Then open http://localhost:5181. See the README for what this setup does not include.
+services:
+  clinic:
+    build: .
+    image: junctura-clinic:local
+    ports:
+      - "5181:5181"
+    environment:
+      # The browser reaches Junctura at localhost:8080 (from the demo credentials file), but inside the
+      # container "localhost" is the container itself. These two addresses point at the host instead.
+      JUNCTURA_URL: ${JUNCTURA_URL_INTERNAL:-http://host.docker.internal:8080}
+      JUNCTURA_ISSUER_INTERNAL: ${JUNCTURA_ISSUER_INTERNAL:-http://host.docker.internal:8080/identity/realms/junctura}
+      # Optional AI summary (off unless a station turns it on). Leave unset to keep it unavailable.
+      AI_SUMMARY_URL: ${AI_SUMMARY_URL:-}
+      AI_SUMMARY_KEY: ${AI_SUMMARY_KEY:-}
+      AI_SUMMARY_MODEL: ${AI_SUMMARY_MODEL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Demo data and credentials, read only. The database lives in the "clinic-data" volume.
+      - ${JUNCTURA_HEALTH_DIR:-../junctura-health}:/junctura-health:ro
+      - clinic-data:/data
+    restart: unless-stopped
+
+volumes:
+  clinic-data:

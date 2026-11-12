@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: 2026 Junctura Contributors
+# SPDX-License-Identifier: Apache-2.0
+name: Release
+
+# Push a tag `vX.Y.Z` (same version as package.json, with a `## X.Y.Z` section in CHANGELOG.md) to build
+# the source package junctura-clinic-X.Y.Z.tar.gz and publish it as a GitHub Release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write # create the GitHub Release
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Check the tag matches the package version and the changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          package="$(node -p "require('./package.json').version")"
+          if [ "$version" != "$package" ]; then echo "Tag $GITHUB_REF_NAME does not match package.json version $package"; exit 1; fi
+          awk -v v="$version" 'index($0, "## " v) == 1 { found = 1; next } /^## / { found = 0 } found' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then echo "CHANGELOG.md has no '## $version' section"; exit 1; fi
+      - name: Build from source (proves the package builds from a clean checkout)
+        run: |
+          npm ci
+          npm run web:install
+          npm run build
+      - name: Create the source package and its checksum
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          name="junctura-clinic-$version"
+          git archive --format=tar.gz --prefix="$name/" --output="$name.tar.gz" "$GITHUB_SHA"
+          sha256sum "$name.tar.gz" > "$name.tar.gz.sha256"
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          name="junctura-clinic-$version"
+          gh release create "$GITHUB_REF_NAME" "$name.tar.gz" "$name.tar.gz.sha256" \
+            --title "Junctura Clinic $version" --notes-file release-notes.md --verify-tag
