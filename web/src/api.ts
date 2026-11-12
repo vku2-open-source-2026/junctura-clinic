@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
 import { freshAccessToken, type OidcSettings } from "./auth";
-import type { AuditEntry, DueItem, Me, Overview, PatientRecord, PatientSummary, PublicConfig, QueueEntry, ReferralRow, StationSettings } from "./types";
+import type { AuditEntry, DueItem, JunctureCall, Me, Overview, PatientRecord, PatientSummary, PublicConfig, QueueEntry, ReferralRow, StationSettings } from "./types";
 
 /** `code` is the server's error name (for example "allergy-conflict"); `body` is the whole answer. */
 export class ApiError extends Error {
@@ -41,6 +41,7 @@ export const getOverview = (settings: OidcSettings, signal?: AbortSignal) => req
 export const getVaccinations = (settings: OidcSettings, signal?: AbortSignal) => request<{ today: string; due: DueItem[] }>("/api/vaccinations", settings, signal);
 export const getReferrals = (settings: OidcSettings, signal?: AbortSignal) => request<{ referrals: ReferralRow[] }>("/api/referrals", settings, signal).then(body => body.referrals);
 export const getQueue = (settings: OidcSettings, signal?: AbortSignal) => request<{ today: string; queue: QueueEntry[] }>("/api/queue", settings, signal).then(body => body.queue);
+export const getJunctureCalls = (settings: OidcSettings, signal?: AbortSignal) => request<{ calls: JunctureCall[] }>("/api/junctura-calls?limit=200", settings, signal).then(body => body.calls);
 export const getAudit = (settings: OidcSettings, signal?: AbortSignal) => request<{ entries: AuditEntry[] }>("/api/audit?limit=200", settings, signal).then(body => body.entries);
 export const getSettings = (settings: OidcSettings) => request<StationSettings>("/api/settings", settings);
 export const getSummary = (settings: OidcSettings, patientId: string) => request<{ kind: "template"; lines: string[] }>(`/api/patients/${enc(patientId)}/summary`, settings);

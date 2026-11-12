@@ -20,6 +20,10 @@ All notable changes to Junctura Clinic are recorded here. The format follows
 
 ### Added
 
+- **"Nhật ký Junctura" tab** (station managers): every capability call other apps made through Junctura, with
+  the capability, purpose, emergency mark, the person's record and how it ended (answered, refused and why, no
+  record). New `GET /api/junctura-calls` (needs `audit.read`). Calls are recorded as structured audit lines
+  (capability, purpose, outcome; never record content) and no longer appear in the staff action log.
 - **Clinic provides its four capabilities through Junctura**: `pre-visit-summary`, `allergy-list`,
   `vaccination-history` and `referral-summary` (`POST /capabilities/<slug>`, HTTPS). Each call redeems the
   one-use ticket (`@junctura/server-client`), checks purpose and emergency rules and the person named by the

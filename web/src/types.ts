@@ -56,5 +56,6 @@ export interface QueueEntry {
   severeAllergy: boolean; allergyState: "recorded" | "none-known" | "not-recorded";
 }
 export interface AuditEntry { id: number; at: string; username: string; displayName: string; action: string; patientId?: string; patientName?: string; detail?: string }
+export interface JunctureCall { id: number; at: string; capability?: string; purpose?: string; emergency: boolean; outcome?: string; patientId?: string; patientName?: string }
 export interface StationSettings { aiSummary: boolean }
 export interface AllergyConflict { medicine: string; allergen: string; severity: Severity }

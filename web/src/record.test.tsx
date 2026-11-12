@@ -5,10 +5,11 @@ import { ToastProvider } from "@junctura/health-ui";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addEncounter, createPatient, enqueue, getAudit, getPatient, getQueue, listPatients } from "./api";
+import { addEncounter, createPatient, enqueue, getAudit, getJunctureCalls, getPatient, getQueue, listPatients } from "./api";
 import { Patients } from "./Patients";
 import { PatientRecordPage } from "./Record";
 import { Audit } from "./Audit";
+import { JunctureCalls } from "./JunctureCalls";
 import { Reception } from "./Reception";
 import { SessionProvider, type SessionValue } from "./session";
 import { Settings } from "./Settings";
@@ -20,8 +21,8 @@ const summaries: PatientSummary[] = [
   { patientId: "P0002", patientName: "Trần Thị Bình", birthYear: 1975, sex: "female", ward: "B", allergyState: "recorded", allergyCount: 1, severeAllergy: true, lastVisit: null },
 ];
 
-vi.mock("./api", async importOriginal => ({ ...(await importOriginal<typeof import("./api")>()), getPatient: vi.fn(), listPatients: vi.fn(), getQueue: vi.fn(), getAudit: vi.fn(), addEncounter: vi.fn(), createPatient: vi.fn(), enqueue: vi.fn() }));
-const mocked = { getPatient: vi.mocked(getPatient), listPatients: vi.mocked(listPatients), getQueue: vi.mocked(getQueue), getAudit: vi.mocked(getAudit), addEncounter: vi.mocked(addEncounter), createPatient: vi.mocked(createPatient), enqueue: vi.mocked(enqueue) };
+vi.mock("./api", async importOriginal => ({ ...(await importOriginal<typeof import("./api")>()), getPatient: vi.fn(), listPatients: vi.fn(), getQueue: vi.fn(), getAudit: vi.fn(), getJunctureCalls: vi.fn(), addEncounter: vi.fn(), createPatient: vi.fn(), enqueue: vi.fn() }));
+const mocked = { getPatient: vi.mocked(getPatient), listPatients: vi.mocked(listPatients), getQueue: vi.mocked(getQueue), getAudit: vi.mocked(getAudit), getJunctureCalls: vi.mocked(getJunctureCalls), addEncounter: vi.mocked(addEncounter), createPatient: vi.mocked(createPatient), enqueue: vi.mocked(enqueue) };
 const ALL = ["read", "register", "queue", "exam", "vaccinate", "refer", "audit.read", "settings.write"] as const;
 const sessionFor = (permissions: readonly (typeof ALL)[number][]): SessionValue => ({
   settings: { issuer: "https://id.test", clientId: "c" }, facility: "Trạm test", expire: () => {}, setCrumbs: () => {},
@@ -114,6 +115,23 @@ describe("reception, audit and settings", () => {
     wrap(<Audit />);
     expect(await screen.findByText("Nguyễn Văn An")).toBeTruthy();
     expect(screen.queryByText("encounter.create")).toBeNull();
+  });
+  it("lists Junctura calls with readable purpose, result and an emergency mark", async () => {
+    mocked.getJunctureCalls.mockResolvedValue([
+      { id: 2, at: "2026-11-11T02:05:00Z", capability: "allergy-list", purpose: "treatment", emergency: true, outcome: "answered", patientId: "P0001", patientName: "Nguyễn Văn An" },
+      { id: 1, at: "2026-11-11T02:00:00Z", capability: "vaccination-history", purpose: "claim_review", emergency: false, outcome: "refused:purpose_not_allowed" },
+    ]);
+    wrap(<JunctureCalls />);
+    expect(await screen.findByText("Danh sách dị ứng")).toBeTruthy();
+    expect(screen.getByText("Cấp cứu")).toBeTruthy();
+    expect(screen.getByText("Đã trả lời")).toBeTruthy();
+    expect(screen.getByText("Từ chối: Sai mục đích")).toBeTruthy();
+    expect(screen.queryByText("allergy-list")).toBeNull();
+  });
+  it("refuses the Junctura log without audit.read", async () => {
+    wrap(<JunctureCalls />, ["read"]);
+    expect(await screen.findByText(/Chỉ quản lý trạm xem được nhật ký Junctura/)).toBeTruthy();
+    expect(mocked.getJunctureCalls).not.toHaveBeenCalled();
   });
   it("locks the AI summary switch for roles without settings.write", () => {
     wrap(<Settings />, ["read"]);

@@ -88,9 +88,10 @@ export function createCapabilityHandler({ data, junctura, now = () => new Date()
     res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
     res.end(payload);
   };
+  /** One audit line per call: which capability, for what purpose, how it ended. Never the data itself. */
   const record = (slug, context, patientId, outcome) =>
-    data.log({ ...SERVICE, displayName: `Junctura (${context?.purpose ?? "?"})` }, "capability.call", patientId ?? null,
-      `${slug}: ${outcome}${context?.emergency ? " (cấp cứu)" : ""}`);
+    data.log(SERVICE, "capability.call", patientId ?? null,
+      JSON.stringify({ capability: slug, purpose: context?.purpose ?? null, emergency: context?.emergency === true, outcome }));
 
   async function answer(req) {
     const slug = /^\/capabilities\/([a-z0-9-]+)$/.exec(new URL(req.url, "http://localhost").pathname)?.[1];
@@ -115,7 +116,7 @@ export function createCapabilityHandler({ data, junctura, now = () => new Date()
 
     const policy = checkContext(contract, context);
     if (!policy.allowed) {
-      record(slug, context, null, `từ chối (${policy.reason})`);
+      record(slug, context, null, `refused:${policy.reason}`);
       throw new Refusal(403, policy.reason);
     }
     const patientId = data.patientIdBySubject(context.dataSubject);
@@ -123,15 +124,15 @@ export function createCapabilityHandler({ data, junctura, now = () => new Date()
     const stamp = now();
     const output = patient && PROJECTIONS[slug](patient, { input, facility: data.facility, now: stamp.toISOString() });
     if (!output) {
-      record(slug, context, patientId, "không có hồ sơ");
+      record(slug, context, patientId, "no_record");
       throw new Refusal(404, "no_record");
     }
     const outputIssues = validateValue(contract.outputSchema, output);
     if (outputIssues.length) {
-      record(slug, context, patientId, "lỗi dữ liệu, không trả lời");
+      record(slug, context, patientId, "data_error");
       throw new Refusal(500, "output_does_not_fit_contract", outputIssues);
     }
-    record(slug, context, patientId, "đã trả lời");
+    record(slug, context, patientId, "answered");
     return { output };
   }
 
