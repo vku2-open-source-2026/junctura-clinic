@@ -9,6 +9,8 @@ All notable changes to Junctura Clinic are recorded here. The format follows
 
 ## Unreleased
 
+## 0.1.0 - 2026-11-12
+
 ### Changed
 
 - **Web UI aligned with the Junctura Console** (`@junctura/health-ui` 0.3.0): floating side bar, top bar with
@@ -20,6 +22,10 @@ All notable changes to Junctura Clinic are recorded here. The format follows
 
 ### Added
 
+- **Docker**: `Dockerfile` (multi-stage, non-root runtime) and `compose.yaml` to run Clinic next to a local
+  Junctura DX-OS. New optional `JUNCTURA_ISSUER_INTERNAL` lets the server fetch signing keys from an address
+  other than the public issuer (tokens are still checked against the public issuer).
+- **Project policies**: `SECURITY.md`, `CODE_OF_CONDUCT.md`, `THIRD-PARTY.md`; NOTICE points to it.
 - **Reception**: insurance (BHYT) number on the record; automatic priority for children under 6 and people
   aged 60+; self-service ticket page `/lay-so` (QR for phones) and a waiting-room board `/bang-so` that show
   ticket numbers only. Public endpoints are rate-limited and answer only when name and birth year match

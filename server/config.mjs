@@ -42,6 +42,8 @@ export function loadConfig({ env = process.env, cwd = process.cwd() } = {}) {
     junctura: baseUrl && clientId && clientSecret ? Object.freeze({ baseUrl, clientId, clientSecret }) : null,
     provider: certFile ? Object.freeze({ port: providerPort, host: get("PROVIDER_BIND") ?? "127.0.0.1", certFile: resolve(cwd, certFile), keyFile: resolve(cwd, keyFile) }) : null,
     issuer: issuer.replace(/\/+$/, ""),
+    /** Where to fetch the signing keys when the public issuer address is not reachable from here (for example inside a container). Tokens are still checked against `issuer`. */
+    issuerInternal: (get("JUNCTURA_ISSUER_INTERNAL") ?? issuer).replace(/\/+$/, ""),
     webClientId,
     port,
     host: get("HOST") ?? "127.0.0.1",

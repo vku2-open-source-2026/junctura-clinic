@@ -29,12 +29,12 @@ async function fetchJson(url) {
  * Signature keys come from the issuer's JWKS and are cached; an unknown key id
  * triggers one refresh at most every `refreshMs`.
  */
-export function createVerifier({ issuer, clientId, getJson = fetchJson, now = Date.now, skewSeconds = 30, ttlMs = 600_000, refreshMs = 30_000 }) {
+export function createVerifier({ issuer, keysBase = issuer, clientId, getJson = fetchJson, now = Date.now, skewSeconds = 30, ttlMs = 600_000, refreshMs = 30_000 }) {
   let keys = new Map();
   let loadedAt = -Infinity;
 
   async function load() {
-    const { keys: list } = await getJson(`${issuer}/protocol/openid-connect/certs`);
+    const { keys: list } = await getJson(`${keysBase}/protocol/openid-connect/certs`);
     keys = new Map(list.filter(key => key.kty === "RSA" && (!key.use || key.use === "sig")).map(key => [key.kid, createPublicKey({ key, format: "jwk" })]));
     loadedAt = now();
   }

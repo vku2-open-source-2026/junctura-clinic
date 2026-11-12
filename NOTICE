@@ -8,5 +8,7 @@ rights and agreement; it does not claim ownership of upstream components.
 External components retain their own copyright, license and notice terms.
 Dependencies are declared in package manifests and installed from their
 registries; no third-party source code has been copied into this project.
+The components, their licenses and the optional external AI service are listed in
+THIRD-PARTY.md.
 Any patient data used for development or demonstration is synthetic and
 describes no real person.

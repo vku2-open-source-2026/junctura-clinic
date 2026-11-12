@@ -1,6 +1,6 @@
 {
   "name": "junctura-clinic",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Junctura Clinic: commune health station app on Junctura DX-OS (patient records from synthetic data, Junctura sign-in).",
   "license": "Apache-2.0",

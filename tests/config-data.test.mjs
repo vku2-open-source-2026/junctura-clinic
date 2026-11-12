@@ -26,6 +26,8 @@ test("config reads the demo credentials file and lets the environment override i
   const config = loadConfig({ env: { JUNCTURA_CLINIC_ENV: file }, cwd: dir });
   assert.equal(config.issuer, "https://id.example.test/identity/realms/junctura");
   assert.equal(config.port, 5181);
+  assert.equal(config.issuerInternal, config.issuer, "keys come from the public issuer unless an internal address is given");
+  assert.equal(loadConfig({ env: { JUNCTURA_CLINIC_ENV: file, JUNCTURA_ISSUER_INTERNAL: "http://host.docker.internal:8080/identity/realms/junctura/" }, cwd: dir }).issuerInternal, "http://host.docker.internal:8080/identity/realms/junctura");
   assert.equal(config.host, "127.0.0.1");
   assert.equal(JSON.stringify(config).includes("never-exposed"), false, "the backend client secret is not part of the configuration");
   assert.equal(loadConfig({ env: { JUNCTURA_CLINIC_ENV: file, PORT: "6000" }, cwd: dir }).port, 6000);

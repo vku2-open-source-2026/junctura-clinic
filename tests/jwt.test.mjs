@@ -59,3 +59,12 @@ test("refreshes the key set once when a new key id appears", async () => {
   await verify(first.sign());
   assert.equal(calls, 2, "known keys are served from the cache");
 });
+
+test("fetches signing keys from the internal address but still checks the public issuer", async () => {
+  const signer = makeSigner();
+  const asked = [];
+  const verify = createVerifier({ issuer: ISSUER, keysBase: "http://gateway.internal:8080/identity/realms/junctura", clientId: CLIENT, getJson: async url => { asked.push(url); return { keys: [signer.jwk] }; } });
+  assert.equal((await verify(signer.sign({ sub: "abc" }))).sub, "abc");
+  assert.deepEqual(asked, ["http://gateway.internal:8080/identity/realms/junctura/protocol/openid-connect/certs"]);
+  await assert.rejects(verify(signer.sign({ iss: "http://gateway.internal:8080/identity/realms/junctura" })));
+});

@@ -9,6 +9,7 @@ version = 1
 [[annotations]]
 path = [
   "NOTICE",
+  "SECURITY.md",
   ".node-version",
   "**/*.json",
 ]

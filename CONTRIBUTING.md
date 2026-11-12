@@ -28,3 +28,8 @@
 - **Không commit bí mật** (`.env`, khóa, token). Dùng `.env.example` để mô tả biến môi trường.
 - Hợp đồng năng lực dùng chung nằm ở `junctura-health/contracts`; đổi hợp đồng phải sửa ở đó trước.
 - Ghi thay đổi đáng chú ý vào mục `Unreleased` của `CHANGELOG.md`.
+- **Lỗ hổng bảo mật** báo riêng theo [SECURITY.md](SECURITY.md), không mở Issue công khai. Mọi người tham gia theo [Quy tắc ứng xử](CODE_OF_CONDUCT.md).
+
+## Lưu ý khi chạy `npm run check:reuse`
+
+Công cụ `reuse` (6.2.0) đoán bảng mã của file từ 2048 byte đầu. File tài liệu có nhiều tiếng Việt ngay phần đầu (README, tài liệu) đôi khi bị đoán sai và báo thiếu header SPDX dù header vẫn có. Cách xử lý: thêm một dấu cách thừa ở cuối dòng chú thích SPDX hoặc xen vài ký tự ASCII vào phần đầu file, rồi chạy lại. Đừng xóa header.
