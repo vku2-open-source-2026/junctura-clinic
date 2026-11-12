@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import test from "node:test";
 import { getContract, validateValue } from "@junctura/health-contracts";
 import { PROVIDED, createCapabilityHandler } from "../server/capabilities.mjs";
-import { TODAY, fixture } from "./helpers.mjs";
+import { TODAY, fixture, startApp } from "./helpers.mjs";
 import { buildClinicData } from "../server/data.mjs";
 
 const TICKET = `Bearer ${"a".repeat(43)}`;
@@ -150,7 +150,30 @@ test("every call is audited with its purpose but never with medical content", as
     assert.equal(entry.action, "capability.call");
     assert.equal(entry.username, "junctura");
     assert.equal(entry.patientId, "P0001");
-    assert.equal(entry.detail, "allergy-list: đã trả lời (cấp cứu)");
+    assert.deepEqual(JSON.parse(entry.detail), { capability: "allergy-list", purpose: "treatment", emergency: true, outcome: "answered" });
     assert.ok(!JSON.stringify(entry).includes("Penicillin"));
+    assert.equal(app.data.audit({ calls: false }).length, 0, "calls stay out of the staff log");
+  } finally { await app.close(); }
+});
+
+test("station managers see Junctura calls in their own list, separate from staff actions", async () => {
+  const app = await startApp();
+  try {
+    app.data.log({ username: "junctura", displayName: "Junctura" }, "capability.call", "P0001", JSON.stringify({ capability: "allergy-list", purpose: "treatment", emergency: true, outcome: "answered" }));
+    app.data.log({ username: "junctura", displayName: "Junctura" }, "capability.call", null, "not json");
+    const read = async path => {
+      const response = await fetch(app.base + path, { headers: { authorization: `Bearer ${app.signer.sign()}` } });
+      return { status: response.status, body: await response.json() };
+    };
+    const calls = await read("/api/junctura-calls");
+    assert.equal(calls.status, 200);
+    assert.deepEqual(calls.body.calls.map(({ id, at, ...rest }) => rest), [
+      { emergency: false },
+      { capability: "allergy-list", purpose: "treatment", emergency: true, outcome: "answered", patientId: "P0001", patientName: "Nguyễn Văn An" },
+    ]);
+    const staff = await read("/api/audit");
+    assert.ok(staff.body.entries.every(entry => entry.action !== "capability.call"));
+    const reception = await fetch(app.base + "/api/junctura-calls", { headers: { authorization: `Bearer ${app.signer.sign({ preferred_username: "letan.tram" })}` } });
+    assert.equal(reception.status, 403);
   } finally { await app.close(); }
 });

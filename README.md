@@ -34,6 +34,7 @@ Junctura Clinic là một ứng dụng trong [Junctura Health](https://github.co
 | Tiêm chủng | Ghi mũi tiêm, tự tính số mũi, chặn tiêm trùng hoặc đủ mũi, danh sách nhắc tiêm toàn trạm |
 | Chuyển tuyến | Lập phiếu chuyển tuyến, trang xem và in |
 | Nhật ký | Ai, lúc nào, làm gì, với hồ sơ nào (kể cả lượt xem); không chứa nội dung khám |
+| Nhật ký Junctura | Những lần bệnh viện, nhà thuốc xin dữ liệu của trạm qua Junctura: dữ liệu gì, mục đích, cấp cứu, hồ sơ nào, đã trả lời hay từ chối |
 | Phân quyền | `clinic-staff`, `clinic-manager` làm mọi việc; `clinic-reception` chỉ tiếp đón và xem hồ sơ; vai trò khác bị từ chối |
 | Giao diện | Dựng trên [`@junctura/health-ui`](https://www.npmjs.com/package/@junctura/health-ui): sáng/tối, cỡ chữ, tìm nhanh (`/` hoặc Ctrl+K), dùng được trên điện thoại |
 
@@ -120,7 +121,7 @@ Cả bốn lệnh chạy tự động trong [CI](.github/workflows/ci.yml) cho m
 
 ## Hiện trạng
 
-Ứng dụng trạm y tế (đăng nhập, tiếp đón, khám, tiêm chủng, chuyển tuyến, nhật ký) đã chạy được. Clinic đã **cung cấp bốn năng lực qua Junctura** (mã nguồn: `server/capabilities.mjs`). **Chưa có:** tab nhật ký truy cập từ Junctura và chạy trong Docker cùng cả hệ thống. Tiến độ ở [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues) và [CHANGELOG](CHANGELOG.md).
+Ứng dụng trạm y tế (đăng nhập, tiếp đón, khám, tiêm chủng, chuyển tuyến, nhật ký) đã chạy được. Clinic đã **cung cấp bốn năng lực qua Junctura** (mã nguồn: `server/capabilities.mjs`). **Chưa có:** chạy trong Docker cùng cả hệ thống. Tiến độ ở [Issues](https://github.com/vku2-open-source-2026/junctura-clinic/issues) và [CHANGELOG](CHANGELOG.md).
 
 Bản demo soạn tóm tắt theo quy tắc cố định, không dùng AI. Lịch nhắc tiêm theo bộ lịch mẫu của demo, không phải hướng dẫn chuyên môn.
 

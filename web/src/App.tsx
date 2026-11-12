@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Junctura Contributors
 // SPDX-License-Identifier: Apache-2.0
 import { AppShell, Badge, Button, ErrorState, PermissionState, SignInPage, Skeleton, type NavGroup } from "@junctura/health-ui";
-import { CalendarDays, ClipboardList, FileOutput, ScrollText, Settings as Cog, Syringe, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, FileOutput, ScrollText, Settings as Cog, Share2, Syringe, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, getConfig, getMe, getSettings, listPatients } from "./api";
 import { Audit } from "./Audit";
+import { JunctureCalls } from "./JunctureCalls";
 import { buildLogoutUrl, clearSession, completeLogin, loadSession, startLogin } from "./auth";
 import { tabFromPath } from "./domain";
 import { ageOf, sexLabel } from "./format";
@@ -39,6 +40,7 @@ const navFor = (can: (permission: Permission) => boolean): NavGroup[] => [
   ] },
   { label: "Quản lý", items: [
     ...(can("audit.read") ? [{ id: "/audit", label: "Nhật ký thao tác", icon: <ScrollText aria-hidden className="size-4" /> }] : []),
+    ...(can("audit.read") ? [{ id: "/junctura", label: "Nhật ký Junctura", icon: <Share2 aria-hidden className="size-4" /> }] : []),
     { id: "/settings", label: "Cài đặt", icon: <Cog aria-hidden className="size-4" /> },
   ] },
 ];
@@ -119,6 +121,7 @@ export function App() {
   else if (path === "/referrals") page = <Referrals />;
   else if (path === "/reception") page = <Reception />;
   else if (path === "/audit") page = <Audit />;
+  else if (path === "/junctura") page = <JunctureCalls />;
   else if (path === "/settings") page = <Settings />;
   else page = <NotFound />;
 

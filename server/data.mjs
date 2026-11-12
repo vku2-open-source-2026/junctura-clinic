@@ -228,9 +228,11 @@ export function buildClinicData({ clinic, accounts, file = ":memory:", today, no
   // ---------- audit ----------
   const log = (by, action, patientId, detail) =>
     q("INSERT INTO audit (at, username, display_name, action, patient_id, detail) VALUES (?,?,?,?,?,?)").run(stamp(), by.username, by.displayName ?? by.username, action, patientId ?? null, detail ?? null);
-  function audit({ limit = 100, patientId } = {}) {
+  /** `calls`: true lists only the capability calls other apps made through Junctura, false leaves them out, omitted lists everything. */
+  function audit({ limit = 100, patientId, calls } = {}) {
     const max = Math.min(Math.max(Number(limit) || 100, 1), 500);
-    const sql = `SELECT a.*, p.name AS patient_name FROM audit a LEFT JOIN patients p ON p.patient_id = a.patient_id ${patientId ? "WHERE a.patient_id = ?" : ""} ORDER BY a.id DESC LIMIT ${max}`;
+    const where = [patientId && "a.patient_id = ?", calls === true && "a.action = 'capability.call'", calls === false && "a.action <> 'capability.call'"].filter(Boolean);
+    const sql = `SELECT a.*, p.name AS patient_name FROM audit a LEFT JOIN patients p ON p.patient_id = a.patient_id ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY a.id DESC LIMIT ${max}`;
     return rows(patientId ? q(sql).all(patientId) : q(sql).all()).map(item => compact({
       id: item.id, at: item.at, username: item.username, displayName: item.display_name, action: item.action, patientId: item.patient_id, patientName: item.patient_name, detail: item.detail,
     }));

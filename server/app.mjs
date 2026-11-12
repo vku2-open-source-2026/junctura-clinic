@@ -23,6 +23,13 @@ const securityHeaders = config => ({
 });
 
 const MAX_BODY = 64 * 1024;
+
+/** An audit line written by capabilities.mjs, as the Junctura call it records. */
+function callOf({ id, at, patientId, patientName, detail }) {
+  let call = {};
+  try { call = JSON.parse(detail ?? "{}"); } catch { /* an unreadable line is still listed, without details */ }
+  return Object.fromEntries(Object.entries({ id, at, capability: call.capability, purpose: call.purpose, emergency: call.emergency === true, outcome: call.outcome, patientId, patientName }).filter(([, v]) => v !== undefined && v !== null));
+}
 const SEVERITY = ["mild", "moderate", "severe"];
 const URGENCY = ["routine", "urgent", "emergency"];
 
@@ -121,7 +128,11 @@ export function createApp({ config, data, verifier }) {
       if (path === "/api/settings") return [200, data.settings()];
       if (path === "/api/audit") {
         need(user, "audit.read");
-        return [200, { entries: data.audit({ limit: url.searchParams.get("limit") ?? 100, patientId: url.searchParams.get("patient") || undefined }) }];
+        return [200, { entries: data.audit({ limit: url.searchParams.get("limit") ?? 100, patientId: url.searchParams.get("patient") || undefined, calls: false }) }];
+      }
+      if (path === "/api/junctura-calls") {
+        need(user, "audit.read");
+        return [200, { calls: data.audit({ limit: url.searchParams.get("limit") ?? 100, calls: true }).map(callOf) }];
       }
       if ((match = /^\/api\/patients\/([A-Za-z0-9-]{1,32})\/summary$/.exec(path))) {
         if (!data.settings().aiSummary) throw new DomainError("summary-disabled", 409);
