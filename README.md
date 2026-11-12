@@ -14,7 +14,7 @@
 [![REUSE compliant](https://img.shields.io/badge/REUSE-compliant-18877A.svg)](REUSE.toml)
 ![Node.js 24](https://img.shields.io/badge/Node.js-24-5FA04E.svg)
 
-[Giới thiệu](#giới-thiệu) · [Kiến trúc](#kiến-trúc) · [Bắt đầu nhanh](#bắt-đầu-nhanh) · [Cấu hình](#cấu-hình) · [Trang và API](#trang-và-api-chính) · [Tài liệu](#tài-liệu) · [Lộ trình](#lộ-trình)
+[Giới thiệu](#giới-thiệu) · [Giao diện](#giao-diện) · [Kiến trúc](#kiến-trúc) · [Bắt đầu nhanh](#bắt-đầu-nhanh) · [Cấu hình](#cấu-hình) · [Trang và API](#trang-và-api-chính) · [Tài liệu](#tài-liệu) · [Lộ trình](#lộ-trình)
 
 </div>
 
@@ -67,6 +67,34 @@ Trạm y tế xã là nơi người dân gặp nhân viên y tế đầu tiên, 
 - Nhật ký thao tác: ai, lúc nào, làm gì, với hồ sơ nào (kể cả lượt xem), không chứa nội dung khám.
 - Tóm tắt hồ sơ theo quy tắc cố định; **tùy chọn** dùng mô hình AI (tắt mặc định, dữ liệu gửi đi đã bỏ danh tính, kết quả luôn có nhãn "cần kiểm tra lại", lỗi thì quay về bản theo mẫu).
 - Giao diện dựng trên [`@junctura/health-ui`](https://www.npmjs.com/package/@junctura/health-ui): sáng/tối, cỡ chữ, tìm nhanh (`/` hoặc Ctrl+K), dùng được trên điện thoại.
+
+## Giao diện
+
+Ảnh chụp từ bản demo với dữ liệu giả lập.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/02-queue.png" alt="Hàng chờ khám"><br><sub><b>Hàng chờ khám</b>: số thứ tự, ưu tiên khẩn, trẻ nhỏ, người cao tuổi</sub></td>
+    <td width="50%"><img src="docs/screenshots/03-record.png" alt="Hồ sơ bệnh nhân"><br><sub><b>Hồ sơ</b>: thanh dị ứng luôn ở đầu, thẻ BHYT, nhắc tiêm chủng</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/04-referral-tracking.png" alt="Theo dõi chuyển tuyến"><br><sub><b>Chuyển tuyến</b>: trạng thái và số lần bệnh viện đã xem qua Junctura</sub></td>
+    <td width="50%"><img src="docs/screenshots/06-junctura-log.png" alt="Nhật ký Junctura"><br><sub><b>Nhật ký Junctura</b>: ai xin dữ liệu gì, mục đích, kết quả</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/05-reports.png" alt="Báo cáo"><br><sub><b>Báo cáo</b>: chỉ số đếm, tải CSV</sub></td>
+    <td width="50%"><img src="docs/screenshots/01-today.png" alt="Màn hình Hôm nay"><br><sub><b>Hôm nay</b>: việc cần xử lý trong ngày</sub></td>
+  </tr>
+</table>
+
+**Lấy số tự phục vụ.** Người dân quét mã QR và nhận số thứ tự trên điện thoại; màn hình chờ ở trạm chỉ hiện số.
+
+<table>
+  <tr>
+    <td width="25%"><img src="docs/screenshots/09-self-service-phone.png" alt="Lấy số trên điện thoại"></td>
+    <td width="75%"><img src="docs/screenshots/08-waiting-board.png" alt="Màn hình chờ"></td>
+  </tr>
+</table>
 
 ## Kiến trúc
 
